@@ -23,7 +23,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   const isLoginPage = location.pathname === "/login";
   const isStudent = location.pathname.startsWith("/student");
-  const isPublicAula = location.pathname === "/aula";
+  const isPublicAula = location.pathname === "/aula" || location.pathname === "/preguntas";
   const embedded = isEmbedded();
   // Ruta raíz: es solo un redireccionador por rol (no tiene UI propia). Mientras
   // resuelve a /admin o /student NO debe renderizar el header legacy (eso era el

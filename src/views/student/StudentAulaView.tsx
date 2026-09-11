@@ -4,6 +4,8 @@ import { Icon, type IconName } from "../../components/student/ds";
 import { useAuth } from "../../contexts/AuthContext";
 import type { InformeTask, Practica } from "../../types";
 import StudentDeliveriesPanel from "./StudentDeliveriesPanel";
+import "../../components/student/home/atlas/atlasHome.css";
+import { createFaqSearchIndex, searchFaq } from "../../utils/faqSearch";
 
 type AulaSectionId = "guia" | "descargas" | "preguntas" | "entregas";
 
@@ -438,6 +440,10 @@ const faqGroups: FaqGroup[] = [
     subtitle: "Convocatorias, cupos y confirmación.",
     items: [
       {
+        q: "¿Inscribirme a la materia PPS es lo mismo que anotarme a una convocatoria?",
+        a: "No. Son dos instancias distintas. La inscripción académica a la materia y sus correlatividades se consultan con Secretaría. Las convocatorias permiten postularte a prácticas concretas durante tu recorrido. Anotarte a una convocatoria no reemplaza la inscripción académica a la materia.",
+      },
+      {
         q: "¿Cada cuánto se publican nuevas convocatorias?",
         a: "Se publican de forma periódica a lo largo del año. Revisá con frecuencia Mi Panel, el Campus y el grupo de WhatsApp de novedades.",
       },
@@ -446,8 +452,8 @@ const faqGroups: FaqGroup[] = [
         a: "Revisá la cantidad de horas, el área, los requisitos, la modalidad y la ubicación. Prestá especial atención a los horarios: inscribite solamente si podés sostener la asistencia durante toda la PPS y si contás con los medios necesarios para llegar a la institución.",
       },
       {
-        q: "¿Puedo volver a inscribirme en una PPS que ya realicé?",
-        a: "No. Las PPS ya realizadas no se pueden repetir.",
+        q: "¿Puedo realizar otra PPS en una institución donde ya hice prácticas?",
+        a: "No podés repetir una PPS ya realizada para volver a sumar sus horas. Una misma institución puede ofrecer prácticas diferentes: si la nueva propuesta corresponde a otra orientación, podés postularte según los requisitos de esa convocatoria. Esto no permite cambiar la orientación de una PPS que ya realizaste. Si tu práctica quedó desaprobada, podés inscribirte en una nueva edición para volver a realizarla, como se explica en la pregunta sobre desaprobación.",
       },
       {
         q: "¿Qué pasa si una convocatoria ofrece varios dispositivos?",
@@ -504,6 +510,10 @@ const faqGroups: FaqGroup[] = [
     subtitle: "Horas, asistencia y cambios durante la cursada.",
     items: [
       {
+        q: "Me faltan pocas horas: ¿puedo hacer solamente una parte de una PPS?",
+        a: "Debés completar el recorrido establecido en la convocatoria, aunque para llegar a las 250 horas te falten menos. Las 250 horas son un requisito mínimo: no significa que debas finalizar exactamente con esa cantidad. Alcanzarlas durante una PPS no te habilita a interrumpirla ni a darla por aprobada antes de completar sus condiciones.",
+      },
+      {
         q: "¿Cuántas horas suma mi PPS?",
         a: (
           <>
@@ -516,12 +526,28 @@ const faqGroups: FaqGroup[] = [
         ),
       },
       {
+        q: "¿Cuándo finaliza mi PPS? ¿Puedo dejar de asistir si ya completé las horas?",
+        a: (
+          <>
+            La PPS finaliza cuando la{" "}
+            <strong>institución lo indica y confirma el cierre del recorrido</strong>. La fecha
+            publicada es aproximada y puede variar según el cronograma, los feriados, las
+            recuperaciones u otras circunstancias.{" "}
+            <strong>
+              Alcanzar las horas requeridas antes de esa fecha no te habilita a dejar de asistir
+            </strong>
+            . Tampoco debés darla por terminada sólo porque llegó la fecha estimada. Antes de
+            finalizar, confirmá el cierre con la persona referente de la institución.
+          </>
+        ),
+      },
+      {
         q: "¿Las fechas de finalización son exactas?",
         a: "No. Son estimativas y pueden variar según el cronograma, la frecuencia, los feriados o las recuperaciones. Además, la institución puede extender la PPS para asegurar el cumplimiento total de las horas acordadas.",
       },
       {
-        q: "¿Puedo cambiar de orientación una vez iniciada la PPS?",
-        a: "No. Hay que completar las horas en la orientación asignada.",
+        q: "¿Puedo elegir a qué orientación se acreditan las horas?",
+        a: "Las horas corresponden a la orientación del dispositivo o comisión que realizás. Elegir un horario no permite cambiar su orientación por otra que te falte completar. Revisá el área antes de inscribirte: una vez iniciada la PPS, debés completar las horas en la orientación asignada.",
       },
       {
         q: "¿Qué tengo que hacer si voy a faltar?",
@@ -606,6 +632,10 @@ const faqGroups: FaqGroup[] = [
       {
         q: "¿Cómo entrego un informe?",
         a: "Entrá en Entregas, abrí la PPS correspondiente y seguí el enlace al Campus. Allí podés subir el informe y, si la práctica fue presencial, también la planilla de asistencia firmada.",
+      },
+      {
+        q: "¿Dónde entrego la planilla de asistencia? ¿Tengo que enviarla también por correo?",
+        a: "Si la PPS fue presencial, adjuntá la planilla firmada junto con el informe en Campus y conservá una copia. No necesitás enviarla además por correo, salvo que Coordinación te la solicite para revisar una situación particular. Las PPS online no requieren planilla de asistencia.",
       },
       {
         q: "¿Qué hago si no encuentro el espacio de entrega de mi PPS?",
@@ -778,6 +808,10 @@ const faqGroups: FaqGroup[] = [
     subtitle: "Acreditación, propuestas y contacto con coordinación.",
     items: [
       {
+        q: "¿Tengo que hacer 70 horas en cada orientación? ¿Qué significa rotar por tres áreas?",
+        a: "Necesitás al menos 70 horas en tu orientación de especialidad, completar 250 horas totales y realizar prácticas aprobadas en al menos tres de las cuatro áreas: Clínica, Educacional, Laboral y Comunitaria. No se exigen 70 horas en cada una. Educacional y Comunitaria son áreas distintas. Completar las 250 horas no reemplaza el requisito de rotación y todos los informes deben estar aprobados.",
+      },
+      {
         q: "¿Cuáles son los requisitos obligatorios para acreditar?",
         a: (
           <ol>
@@ -795,6 +829,10 @@ const faqGroups: FaqGroup[] = [
             </li>
           </ol>
         ),
+      },
+      {
+        q: "¿La acreditación se pide después de cada PPS o al terminar todo el recorrido?",
+        a: "La acreditación final corresponde al recorrido completo: 250 horas totales, al menos 70 en tu especialidad, rotación por tres áreas y todos los informes aprobados. Terminar una práctica o aprobar un informe no equivale a acreditar la materia completa. No se solicita una acreditación final por cada PPS ni por cada área; el procedimiento se explica en «¿Cómo solicito la acreditación?».",
       },
       {
         q: "¿Cómo solicito la acreditación?",
@@ -869,6 +907,10 @@ const faqGroups: FaqGroup[] = [
   },
 ];
 
+const faqSearchIndex = createFaqSearchIndex(
+  faqGroups.flatMap((group) => group.items.map((item) => ({ ...item, category: group.label })))
+);
+
 interface StudentAulaViewProps {
   mode?: "panel" | "public";
   section?: AulaSectionId;
@@ -894,6 +936,9 @@ const StudentAulaView: React.FC<StudentAulaViewProps> = ({
   const [activeFaq, setActiveFaq] = useState(faqGroups[0].id);
   const [openFaq, setOpenFaq] = useState<string | null>(faqGroups[0].items[0]?.q ?? null);
   const [mailCopied, setMailCopied] = useState(false);
+  const [faqQuery, setFaqQuery] = useState("");
+  const isSearchingFaq = faqQuery.trim().length > 0;
+  const faqResults = useMemo(() => searchFaq(faqSearchIndex, faqQuery), [faqQuery]);
 
   const activeSection = section || activeSectionState;
 
@@ -932,6 +977,9 @@ const StudentAulaView: React.FC<StudentAulaViewProps> = ({
     () => faqGroups.find((group) => group.id === activeFaq) ?? faqGroups[0],
     [activeFaq]
   );
+  const visibleFaqItems = isSearchingFaq
+    ? faqResults
+    : selectedFaq.items.map((item) => ({ ...item, category: selectedFaq.label }));
 
   return (
     <div
@@ -1502,31 +1550,91 @@ const StudentAulaView: React.FC<StudentAulaViewProps> = ({
 
             {activeSection === "preguntas" && (
               <>
-                <div className="ah-aula__faq-shell">
-                  <div className="ah-aula__faq-tabs" aria-label="Categorías de preguntas">
-                    {faqGroups.map((group) => (
+                <div
+                  className="ah-aula__faq-search"
+                  role="search"
+                  aria-label="Buscar en preguntas frecuentes"
+                >
+                  <label htmlFor="faq-search">¿Qué necesitás saber?</label>
+                  <div className="ah-aula__faq-search-field">
+                    <Icon name="search" size={20} />
+                    <input
+                      id="faq-search"
+                      type="search"
+                      value={faqQuery}
+                      maxLength={200}
+                      placeholder="Por ejemplo: me faltan pocas horas"
+                      aria-describedby="faq-search-help"
+                      aria-controls="faq-results"
+                      onChange={(event) => {
+                        setFaqQuery(event.target.value);
+                        setOpenFaq(null);
+                      }}
+                      onKeyDown={(event) => {
+                        if (event.key === "Escape") setFaqQuery("");
+                      }}
+                    />
+                    {faqQuery && (
                       <button
-                        key={group.id}
                         type="button"
-                        className={
-                          "ah-aula__faq-tab" + (group.id === activeFaq ? " is-active" : "")
-                        }
-                        onClick={() => {
-                          setActiveFaq(group.id);
-                          setOpenFaq(group.items[0]?.q ?? null);
-                        }}
+                        onClick={() => setFaqQuery("")}
+                        aria-label="Limpiar búsqueda"
                       >
-                        <span>{group.label}</span>
-                        <small>{group.items.length} respuestas</small>
+                        Limpiar
                       </button>
-                    ))}
+                    )}
                   </div>
-                  <div className="ah-aula__faq-list" key={selectedFaq.id}>
-                    <div className="ah-aula__faq-title">
-                      <h3>{selectedFaq.label}</h3>
-                      <p>{selectedFaq.subtitle}</p>
+                  <p id="faq-search-help">
+                    Buscá por tema o escribí tu consulta. Revisamos todas las categorías.
+                  </p>
+                  <p role="status" aria-live="polite" aria-atomic="true">
+                    {isSearchingFaq
+                      ? `${faqResults.length} ${faqResults.length === 1 ? "respuesta encontrada" : "respuestas encontradas"}`
+                      : ""}
+                  </p>
+                </div>
+                <div className={"ah-aula__faq-shell" + (isSearchingFaq ? " is-searching" : "")}>
+                  {!isSearchingFaq && (
+                    <div className="ah-aula__faq-tabs" aria-label="Categorías de preguntas">
+                      {faqGroups.map((group) => (
+                        <button
+                          key={group.id}
+                          type="button"
+                          className={
+                            "ah-aula__faq-tab" + (group.id === activeFaq ? " is-active" : "")
+                          }
+                          onClick={() => {
+                            setActiveFaq(group.id);
+                            setOpenFaq(group.items[0]?.q ?? null);
+                          }}
+                        >
+                          <span>{group.label}</span>
+                          <small>{group.items.length} respuestas</small>
+                        </button>
+                      ))}
                     </div>
-                    {selectedFaq.items.map((item, idx) => {
+                  )}
+                  <div className="ah-aula__faq-list" id="faq-results">
+                    <div className="ah-aula__faq-title">
+                      <h3>{isSearchingFaq ? "Resultados de búsqueda" : selectedFaq.label}</h3>
+                      <p>
+                        {isSearchingFaq
+                          ? "Las respuestas más relacionadas aparecen primero."
+                          : selectedFaq.subtitle}
+                      </p>
+                    </div>
+                    {isSearchingFaq && !faqResults.length && (
+                      <div className="ah-aula__faq-empty">
+                        <strong>No encontramos una respuesta relacionada.</strong>
+                        <p>
+                          Probá con menos palabras o con un tema como horas, inscripción o informes.
+                        </p>
+                        <button type="button" onClick={() => setFaqQuery("")}>
+                          Ver todas las categorías
+                        </button>
+                      </div>
+                    )}
+                    {visibleFaqItems.map((item, idx) => {
                       const isOpen = openFaq === item.q;
                       const panelId = `faq-${selectedFaq.id}-${idx}`;
 
@@ -1536,6 +1644,9 @@ const StudentAulaView: React.FC<StudentAulaViewProps> = ({
                           className="ah-aula__faq-row"
                           data-open={isOpen ? "true" : "false"}
                         >
+                          {isSearchingFaq && (
+                            <p className="ah-aula__faq-result-category">{item.category}</p>
+                          )}
                           <button
                             type="button"
                             className="ah-aula__faq-question"
