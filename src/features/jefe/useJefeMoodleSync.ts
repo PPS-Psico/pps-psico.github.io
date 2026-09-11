@@ -11,6 +11,7 @@ import type { JefeMoodleSyncState } from "./types";
 
 // A render, query invalidation or interval never clears a failed attempt.
 const attempts = new Map<string, { next: number; stopped: boolean }>();
+const running = new Set<string>();
 const MAX_PAGES = 4;
 const RUN_BUDGET_MS = 45_000;
 const empty = {
@@ -44,7 +45,7 @@ export const useJefeMoodleSync = (enabled: boolean, previewKey?: string): JefeMo
 
   const run = useCallback(
     async (manual: boolean, history: boolean) => {
-      if (!enabled || active.current) return;
+      if (!enabled || active.current || running.has(key)) return;
       const ownGeneration = generation.current;
       const current = () => ownGeneration === generation.current;
       const update = (value: Partial<ViewState>) => {
@@ -55,9 +56,10 @@ export const useJefeMoodleSync = (enabled: boolean, previewKey?: string): JefeMo
         return;
       }
       active.current = true;
+      running.add(key);
       stopped.current = false;
       historyMode.current = history;
-      attempts.set(key, { next: Date.now() + 60_000, stopped: true });
+      attempts.set(key, { next: Date.now(), stopped: false });
       update({ ...empty, status: "loading", history });
       let saved = 0;
       let accepted = 0;
@@ -65,6 +67,7 @@ export const useJefeMoodleSync = (enabled: boolean, previewKey?: string): JefeMo
       let pending = 0;
       try {
         if (!(await supportsJefeMoodlePages())) {
+          attempts.set(key, { next: Date.now(), stopped: true });
           update({
             status: "unavailable",
             errorMessage:
@@ -93,10 +96,8 @@ export const useJefeMoodleSync = (enabled: boolean, previewKey?: string): JefeMo
           const task = queue.tasks[0];
           const claim = await claimJefePage(task.cmid, previewKey, manual);
           if (claim.status !== "claimed") break;
-          if (!current() || stopped.current) {
-            await failJefePage(claim.lease, previewKey);
-            break;
-          }
+          // Once claimed, finish this page even if the view was closed or
+          // paused while claiming. Navigation is not a transport failure.
           update({
             status: "syncing",
             currentTask: `${task.task_name} · página ${claim.page + 1}`,
@@ -137,7 +138,9 @@ export const useJefeMoodleSync = (enabled: boolean, previewKey?: string): JefeMo
         if (!current()) return;
         const paused = stopped.current;
         attempts.set(key, {
-          next: Date.now() + (pending > 0 ? 60_000 : 5 * 60_000),
+          // Healthy batches continue promptly. A busy queue backs off instead
+          // of repeatedly claiming a lease owned by another tab.
+          next: Date.now() + (pending > 0 ? (saved > 0 ? 2_000 : 60_000) : 5 * 60_000),
           stopped: paused || history,
         });
         update({
@@ -162,6 +165,7 @@ export const useJefeMoodleSync = (enabled: boolean, previewKey?: string): JefeMo
         });
       } finally {
         active.current = false;
+        running.delete(key);
       }
     },
     [client, enabled, key, previewKey]
@@ -183,13 +187,14 @@ export const useJefeMoodleSync = (enabled: boolean, previewKey?: string): JefeMo
       if (
         enabled &&
         !active.current &&
+        !running.has(key) &&
         !attempt?.stopped &&
         (!attempt || attempt.next <= Date.now())
       )
         void run(false, false);
     };
     const initial = window.setTimeout(tick, 300);
-    const interval = window.setInterval(tick, 10_000);
+    const interval = window.setInterval(tick, 1_000);
     return () => {
       if (generation.current === ownGeneration) generation.current += 1;
       window.clearTimeout(initial);
