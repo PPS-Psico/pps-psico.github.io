@@ -218,7 +218,9 @@ def chequear_duplicados(sol: dict, ctx: dict, hermanas: list[dict],
                 "bloqueante", "Otra solicitud del mismo alumno se pisa con esta",
                 f"solicitud {otra['id'][:8]} ({otra.get('estado')}), "
                 f"{otra.get('fecha_inicio')} → {otra.get('fecha_finalizacion')}, "
-                f"{otra.get('horas_estimadas')} h"))
+                f"pidió {otra.get('horas_estimadas')} h"
+                + (f" y se aprobaron {otra.get('horas_aprobadas')} h"
+                   if otra.get("horas_aprobadas") is not None else "")))
 
     for pr in ctx["practicas"]:
         if normalizar_texto(pr.get("estado")) in NO_COMPUTABLES:
@@ -283,11 +285,80 @@ def chequear_efecto(ctx: dict, especialidad: str, horas: int,
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Referencia de la convocatoria
+# ─────────────────────────────────────────────────────────────────────────────
+
+def horas_del_lanzamiento(lz: dict) -> int | None:
+    try:
+        valor = int(float(lz.get("horas_acreditadas")))
+    except (TypeError, ValueError):
+        return None
+    return valor if valor > 0 else None
+
+
+def referencia_por_lanzamiento(lanzamientos: list[dict], institucion_id, ini, fin,
+                               pedidas: int, out: list[Hallazgo]) -> None:
+    """Cuanto acredita la convocatoria, contra lo que pide el alumno.
+
+    Es el dato que separa un pedido consensuado de uno que acredita de mas, y
+    hasta ahora habia que buscarlo a mano. El cruce es por institucion y
+    superposicion de fechas, que es lo unico que hay: la solicitud no guarda de
+    que convocatoria salio.
+
+    Por eso, cuando hay mas de una candidata NO se elige ninguna. Una institucion
+    puede tener convocatorias de 60 y de 173 horas, asi que quedarse con la mas
+    reciente seria inventar una referencia. Se muestran todas y decide quien lee.
+    """
+    if not institucion_id:
+        return
+
+    candidatas = [
+        lz for lz in lanzamientos
+        if lz.get("institucion_uuid") == institucion_id
+        and solapan(ini, fin, lz.get("fecha_inicio"), lz.get("fecha_finalizacion"))
+        and horas_del_lanzamiento(lz) is not None
+    ]
+
+    if not candidatas:
+        out.append(Hallazgo(
+            "dato", "Sin convocatoria que coincida",
+            "ninguna convocatoria de esa institución se superpone con el período "
+            "declarado: la referencia hay que buscarla a mano."))
+        return
+
+    if len(candidatas) > 1:
+        detalle = " · ".join(
+            f"{lz.get('nombre_pps')} ({lz.get('fecha_inicio')} → "
+            f"{lz.get('fecha_finalizacion')}): {horas_del_lanzamiento(lz)} h"
+            for lz in candidatas)
+        distintas = {horas_del_lanzamiento(lz) for lz in candidatas}
+        out.append(Hallazgo(
+            "atencion" if len(distintas) > 1 else "dato",
+            "Más de una convocatoria coincide",
+            f"pide {pedidas} h. Candidatas: {detalle}. No se elige ninguna: "
+            f"la solicitud no dice de cuál salió."))
+        return
+
+    referencia = horas_del_lanzamiento(candidatas[0])
+    nombre = candidatas[0].get("nombre_pps")
+    if pedidas > referencia:
+        out.append(Hallazgo(
+            "atencion", "Pide más de lo que acredita la convocatoria",
+            f"«{nombre}» acredita {referencia} h y el alumno pide {pedidas} h "
+            f"(+{pedidas - referencia}). Puede estar consensuado por correo; si no, "
+            f"se acredita lo que definas al aprobar."))
+    else:
+        out.append(Hallazgo(
+            "dato", "Referencia de la convocatoria",
+            f"«{nombre}» acredita {referencia} h · el alumno pide {pedidas} h"))
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Revision por tipo
 # ─────────────────────────────────────────────────────────────────────────────
 
 def revisar_nueva(panel: Panel, sol: dict, hermanas: list[dict],
-                  instituciones: dict[str, dict]) -> dict:
+                  instituciones: dict[str, dict], lanzamientos: list[dict]) -> dict:
     out: list[Hallazgo] = []
     ctx = contexto_alumno(panel, sol["estudiante_id"])
     horas = int(sol.get("horas_estimadas") or 0)
@@ -321,11 +392,14 @@ def revisar_nueva(panel: Panel, sol: dict, hermanas: list[dict],
     if horas <= 0:
         out.append(Hallazgo("bloqueante", "Horas en cero o ausentes", str(horas)))
 
+    referencia_por_lanzamiento(lanzamientos, sol.get("institucion_id"),
+                               sol.get("fecha_inicio"), sol.get("fecha_finalizacion"),
+                               horas, out)
     chequear_efecto(ctx, sol.get("orientacion") or "", horas, out)
     return armar(sol, "nueva", ctx, out)
 
 
-def revisar_modificacion(panel: Panel, sol: dict) -> dict:
+def revisar_modificacion(panel: Panel, sol: dict, lanzamientos: list[dict]) -> dict:
     out: list[Hallazgo] = []
     ctx = contexto_alumno(panel, sol["estudiante_id"])
     nuevas = int(sol.get("horas_nuevas") or 0)
@@ -342,6 +416,16 @@ def revisar_modificacion(panel: Panel, sol: dict) -> dict:
     out.append(Hallazgo(
         "dato", "Cambio pedido",
         f"{practica.get('nombre_institucion')} · {actuales} h → {nuevas} h ({delta:+d})"))
+
+    lz = next((l for l in lanzamientos if l.get("id") == practica.get("lanzamiento_id")), None)
+    if lz is not None and horas_del_lanzamiento(lz) is not None:
+        # Acá no hay ambigüedad: la práctica guarda de qué convocatoria salió.
+        referencia = horas_del_lanzamiento(lz)
+        out.append(Hallazgo(
+            "atencion" if nuevas > referencia else "dato",
+            "Referencia de la convocatoria",
+            f"«{lz.get('nombre_pps')}» acredita {referencia} h · pide {nuevas} h"
+            + (f" (+{nuevas - referencia})" if nuevas > referencia else "")))
 
     if nuevas <= 0:
         out.append(Hallazgo("bloqueante", "Horas nuevas en cero o negativas", str(nuevas)))
@@ -391,9 +475,12 @@ def revisar_todas(panel: Panel) -> list[dict]:
     nuevas = panel.get("solicitudes_nueva_pps?select=*&order=created_at")
     insts = {i["id"]: i for i in
              panel.get("instituciones?select=id,nombre,telefono&limit=2000")}
+    lanzamientos = panel.get(
+        "lanzamientos_pps?select=id,nombre_pps,institucion_uuid,horas_acreditadas,"
+        "orientacion,fecha_inicio,fecha_finalizacion")
 
-    salida = [revisar_modificacion(panel, m) for m in mods]
-    salida += [revisar_nueva(panel, n, nuevas, insts)
+    salida = [revisar_modificacion(panel, m, lanzamientos) for m in mods]
+    salida += [revisar_nueva(panel, n, nuevas, insts, lanzamientos)
                for n in nuevas if n.get("estado") == "pendiente"]
     orden = {"bloqueante": 0, "atencion": 1, "limpio": 2}
     return sorted(salida, key=lambda r: (orden[r["veredicto"]], r["creada"]))
