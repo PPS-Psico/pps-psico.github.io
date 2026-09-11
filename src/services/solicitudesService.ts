@@ -1,8 +1,6 @@
 import * as C from "../constants";
-import { db } from "../lib/db";
 import { supabase } from "../lib/supabaseClient";
 import type { Estudiante, SolicitudPPS } from "../types";
-import { Database } from "../types/supabase";
 import { getPenaltyScore, type PenaltyType, type PpsWithdrawalReason } from "../constants";
 import { fetchStudentData } from "./estudiantesService";
 import { logger } from "../utils/logger";
@@ -402,59 +400,51 @@ export const fetchAllSolicitudesNuevaPPS = async (estado?: string, isTestingMode
   return data || [];
 };
 
-export const approveSolicitudModificacion = async (solicitudId: string, notasAdmin?: string) => {
+export interface AprobarSolicitudInput {
+  solicitudId: string;
+  /*
+    Las horas que acredita coordinación al aprobar. No tienen por qué ser las
+    que pidió el estudiante: a veces el pedido viene consensuado por correo y a
+    veces intenta acreditar más de lo que corresponde al espacio.
+  */
+  horasAprobadas?: number;
+  notasAdmin?: string;
+}
+
+export const approveSolicitudModificacion = async ({
+  solicitudId,
+  horasAprobadas,
+  notasAdmin,
+}: AprobarSolicitudInput) => {
   if (solicitudId.startsWith("mock_")) {
     const solicitudes = await mockDb.getAll("solicitudes_modificacion_pps", { id: solicitudId });
     const solicitud = solicitudes[0];
     if (!solicitud) throw new Error("Solicitud no encontrada");
+    if (solicitud.estado !== "pendiente") throw new Error("La solicitud ya fue procesada");
     if (solicitud.tipo_modificacion === "eliminacion") {
       throw new Error("Las solicitudes de baja deben resolverse con su penalización asociada.");
     }
+    const horas = horasAprobadas ?? solicitud.horas_nuevas;
     await mockDb.update("solicitudes_modificacion_pps", solicitudId, {
       estado: "aprobada",
       notas_admin: notasAdmin,
+      horas_aprobadas: solicitud.tipo_modificacion === "horas" ? horas : null,
     });
-    if (solicitud.tipo_modificacion === "horas" && solicitud.horas_nuevas) {
-      await mockDb.update("practicas", solicitud.practica_id, {
-        horas_realizadas: solicitud.horas_nuevas,
-      });
+    if (solicitud.tipo_modificacion === "horas" && horas) {
+      await mockDb.update("practicas", solicitud.practica_id, { horas_realizadas: horas });
     }
     return solicitud;
   }
-  const { data: solicitud, error: fetchError } = await supabase
-    .from("solicitudes_modificacion_pps")
-    .select("*, practica:practicas(*)")
-    .eq("id", solicitudId)
-    .single();
 
-  if (fetchError) throw fetchError;
-  if (!solicitud) throw new Error("Solicitud no encontrada");
-  if (solicitud.estado !== "pendiente") throw new Error("La solicitud ya fue procesada");
-  if (solicitud.tipo_modificacion === "eliminacion") {
-    throw new Error("Las solicitudes de baja deben resolverse con su penalización asociada.");
-  }
-  const practicaId = solicitud.practica_id;
-  if (solicitud.tipo_modificacion === "horas" && solicitud.horas_nuevas && !practicaId) {
-    throw new Error("La solicitud de horas ya no tiene una práctica asociada.");
-  }
+  const { data, error } = await supabase.rpc("aprobar_solicitud_modificacion_pps", {
+    p_solicitud_id: solicitudId,
+    ...(horasAprobadas != null ? { p_horas_aprobadas: horasAprobadas } : {}),
+    ...(notasAdmin?.trim() ? { p_notas: notasAdmin.trim() } : {}),
+  });
 
-  const { error: updateError } = await supabase
-    .from("solicitudes_modificacion_pps")
-    .update({ estado: "aprobada", notas_admin: notasAdmin })
-    .eq("id", solicitudId);
-
-  if (updateError) throw updateError;
-
-  if (solicitud.tipo_modificacion === "horas" && solicitud.horas_nuevas) {
-    const { error: practicaError } = await supabase
-      .from("practicas")
-      .update({ horas_realizadas: solicitud.horas_nuevas })
-      .eq("id", practicaId as string);
-
-    if (practicaError) throw practicaError;
-  }
-
-  return solicitud;
+  if (error) throw error;
+  if (!data) throw new Error("La base no confirmó la resolución de la solicitud.");
+  return data;
 };
 
 export const rejectSolicitudModificacion = async (
@@ -482,11 +472,20 @@ export const rejectSolicitudModificacion = async (
   if (error) throw error;
 };
 
-export const approveSolicitudNuevaPPS = async (solicitudId: string, notasAdmin?: string) => {
+export const approveSolicitudNuevaPPS = async ({
+  solicitudId,
+  horasAprobadas,
+  notasAdmin,
+}: AprobarSolicitudInput) => {
+  if (horasAprobadas == null || horasAprobadas <= 0) {
+    throw new Error("Indicá cuántas horas se acreditan antes de aprobar.");
+  }
+
   if (solicitudId.startsWith("mock_")) {
     const solicitud = (await mockDb.update("solicitudes_nueva_pps", solicitudId, {
       estado: "aprobada",
       notas_admin: notasAdmin,
+      horas_aprobadas: horasAprobadas,
     })) as any;
     let nombreInstitucion = solicitud.nombre_institucion_manual || "Institución desconocida";
     if (solicitud.institucion_id) {
@@ -495,73 +494,32 @@ export const approveSolicitudNuevaPPS = async (solicitudId: string, notasAdmin?:
         nombreInstitucion = insts[0].nombre;
       }
     }
-    const practicaRecord = {
+    const practica = await mockDb.create("practicas", {
       estudiante_id: solicitud.estudiante_id,
       especialidad: solicitud.orientacion,
       fecha_inicio: solicitud.fecha_inicio,
       fecha_finalizacion: solicitud.fecha_finalizacion,
-      horas_realizadas: solicitud.horas_estimadas,
+      horas_realizadas: horasAprobadas,
       estado: "Finalizada",
       nota: null,
       lanzamiento_id: null,
+      institucion_id: solicitud.institucion_id ?? null,
       nombre_institucion: nombreInstitucion,
       es_online: solicitud.es_online ?? false,
-    };
-    const practica = await mockDb.create("practicas", practicaRecord);
-    return { solicitud, practica };
+    });
+    await mockDb.update("solicitudes_nueva_pps", solicitudId, { practica_id: practica.id });
+    return practica;
   }
-  const { data: solicitud, error: fetchError } = await supabase
-    .from("solicitudes_nueva_pps")
-    .select(
-      `
-      *,
-      institucion:instituciones(nombre)
-    `
-    )
-    .eq("id", solicitudId)
-    .single();
 
-  if (fetchError) throw fetchError;
-  if (!solicitud) throw new Error("Solicitud no encontrada");
-  if (solicitud.estado !== "pendiente") throw new Error("La solicitud ya fue procesada");
+  const { data, error } = await supabase.rpc("aprobar_solicitud_nueva_pps", {
+    p_solicitud_id: solicitudId,
+    p_horas_aprobadas: horasAprobadas,
+    ...(notasAdmin?.trim() ? { p_notas: notasAdmin.trim() } : {}),
+  });
 
-  const instData = (
-    solicitud as { institucion?: { nombre?: string } | { nombre?: string }[] | null }
-  ).institucion;
-  const nombreInstitucion =
-    (Array.isArray(instData) ? instData[0]?.nombre : instData?.nombre) ||
-    solicitud.nombre_institucion_manual ||
-    "Institución desconocida";
-
-  const practicaRecord: Database["public"]["Tables"]["practicas"]["Insert"] = {
-    estudiante_id: solicitud.estudiante_id,
-    especialidad: solicitud.orientacion,
-    fecha_inicio: solicitud.fecha_inicio,
-    fecha_finalizacion: solicitud.fecha_finalizacion,
-    horas_realizadas: solicitud.horas_estimadas,
-    estado: "Finalizada",
-    nota: null,
-    lanzamiento_id: null,
-    nombre_institucion: nombreInstitucion,
-    es_online: solicitud.es_online ?? false,
-  };
-
-  const { data: practica, error: practicaError } = await supabase
-    .from("practicas")
-    .insert(practicaRecord)
-    .select()
-    .single();
-
-  if (practicaError) throw practicaError;
-
-  const { error: updateError } = await supabase
-    .from("solicitudes_nueva_pps")
-    .update({ estado: "aprobada", notas_admin: notasAdmin })
-    .eq("id", solicitudId);
-
-  if (updateError) throw updateError;
-
-  return { solicitud, practica };
+  if (error) throw error;
+  if (!data) throw new Error("La base no confirmó la creación de la práctica.");
+  return data;
 };
 
 export const rejectSolicitudNuevaPPS = async (

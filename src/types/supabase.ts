@@ -2848,6 +2848,7 @@ export type Database = {
           estado_practica_snapshot: string | null
           estudiante_id: string
           fecha_inicio_snapshot: string | null
+          horas_aprobadas: number | null
           horas_nuevas: number | null
           id: string
           lanzamiento_id: string | null
@@ -2873,6 +2874,7 @@ export type Database = {
           estado_practica_snapshot?: string | null
           estudiante_id: string
           fecha_inicio_snapshot?: string | null
+          horas_aprobadas?: number | null
           horas_nuevas?: number | null
           id?: string
           lanzamiento_id?: string | null
@@ -2898,6 +2900,7 @@ export type Database = {
           estado_practica_snapshot?: string | null
           estudiante_id?: string
           fecha_inicio_snapshot?: string | null
+          horas_aprobadas?: number | null
           horas_nuevas?: number | null
           id?: string
           lanzamiento_id?: string | null
@@ -2969,6 +2972,7 @@ export type Database = {
           estudiante_id: string
           fecha_finalizacion: string
           fecha_inicio: string
+          horas_aprobadas: number | null
           horas_estimadas: number
           id: string
           informe_final_url: string
@@ -2977,6 +2981,7 @@ export type Database = {
           notas_admin: string | null
           orientacion: string
           planilla_asistencia_url: string | null
+          practica_id: string | null
           updated_at: string | null
         }
         Insert: {
@@ -2987,6 +2992,7 @@ export type Database = {
           estudiante_id: string
           fecha_finalizacion: string
           fecha_inicio: string
+          horas_aprobadas?: number | null
           horas_estimadas: number
           id?: string
           informe_final_url: string
@@ -2995,6 +3001,7 @@ export type Database = {
           notas_admin?: string | null
           orientacion: string
           planilla_asistencia_url?: string | null
+          practica_id?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -3005,6 +3012,7 @@ export type Database = {
           estudiante_id?: string
           fecha_finalizacion?: string
           fecha_inicio?: string
+          horas_aprobadas?: number | null
           horas_estimadas?: number
           id?: string
           informe_final_url?: string
@@ -3013,6 +3021,7 @@ export type Database = {
           notas_admin?: string | null
           orientacion?: string
           planilla_asistencia_url?: string | null
+          practica_id?: string | null
           updated_at?: string | null
         }
         Relationships: [
@@ -3028,6 +3037,20 @@ export type Database = {
             columns: ["institucion_id"]
             isOneToOne: false
             referencedRelation: "instituciones"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "solicitudes_nueva_pps_practica_id_fkey"
+            columns: ["practica_id"]
+            isOneToOne: false
+            referencedRelation: "practica_estado_entrega"
+            referencedColumns: ["practica_id"]
+          },
+          {
+            foreignKeyName: "solicitudes_nueva_pps_practica_id_fkey"
+            columns: ["practica_id"]
+            isOneToOne: false
+            referencedRelation: "practicas"
             referencedColumns: ["id"]
           },
         ]
@@ -3500,6 +3523,87 @@ export type Database = {
           p_reason: string
         }
         Returns: string
+      }
+      aprobar_solicitud_modificacion_pps: {
+        Args: {
+          p_horas_aprobadas?: number
+          p_notas?: string
+          p_solicitud_id: string
+        }
+        Returns: {
+          comentario_rechazo: string | null
+          convocatoria_id: string | null
+          created_at: string | null
+          estado: string
+          estado_practica_snapshot: string | null
+          estudiante_id: string
+          fecha_inicio_snapshot: string | null
+          horas_aprobadas: number | null
+          horas_nuevas: number | null
+          id: string
+          lanzamiento_id: string | null
+          motivo_baja: string | null
+          motivo_baja_detalle: string | null
+          nombre_pps_snapshot: string | null
+          notas_admin: string | null
+          penalizacion_id: string | null
+          planilla_asistencia_url: string | null
+          practica_id: string | null
+          puntaje_penalizacion_aplicado: number | null
+          resuelta_at: string | null
+          resuelta_por: string | null
+          tipo_modificacion: string
+          tipo_penalizacion_aplicada: string | null
+          updated_at: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "solicitudes_modificacion_pps"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      aprobar_solicitud_nueva_pps: {
+        Args: {
+          p_horas_aprobadas: number
+          p_notas?: string
+          p_solicitud_id: string
+        }
+        Returns: {
+          airtable_id: string | null
+          created_at: string | null
+          desaprobacion_causas: string[] | null
+          desaprobacion_fecha: string | null
+          desaprobacion_motivo_publico: string | null
+          desaprobacion_notificado_at: string | null
+          desaprobacion_registrado_por: string | null
+          es_online: boolean
+          especialidad: string | null
+          estado: string | null
+          estudiante_id: string | null
+          fecha_finalizacion: string | null
+          fecha_inicio: string | null
+          horas_realizadas: number | null
+          id: string
+          informe_estado: string | null
+          institucion_id: string | null
+          lanzamiento_id: string | null
+          nombre_institucion: string | null
+          nota: string | null
+          nota_actualizada_at: string | null
+          nota_fuente: string | null
+          nota_moodle: number | null
+          nota_moodle_cmid: number | null
+          opcion_horario_id: string | null
+          opcion_id: string | null
+          tipo_actividad: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "practicas"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       archive_lanzamientos_after_start_grace: { Args: never; Returns: number }
       assign_special_pps_v1: {

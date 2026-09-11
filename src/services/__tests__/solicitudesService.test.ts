@@ -84,64 +84,53 @@ beforeEach(() => {
   mockState.captured = { froms: [], updates: [], inserts: [] };
 });
 
+/*
+  Las guardas de negocio de la aprobación (estado pendiente, no tocar una baja,
+  bloquear la fila, no duplicar la práctica) dejaron de vivir acá: ahora son una
+  transacción en Postgres. Un mock del cliente no puede demostrar atomicidad ni
+  exclusión, así que estos tests cubren lo único que le queda al servicio —
+  delegar en la RPC correcta con los parámetros correctos— y las guardas se
+  verifican contra la base real.
+*/
 describe("approveSolicitudModificacion", () => {
-  it("rechaza reprocesar una solicitud que no está pendiente", async () => {
-    mockState.selectResponses = [{ data: { id: "s1", estado: "aprobada" }, error: null }];
+  it("delega en la RPC atómica con las horas que definió coordinación", async () => {
+    mockRpc.mockResolvedValueOnce({ data: { id: "s2", estado: "aprobada" }, error: null });
 
-    await expect(approveSolicitudModificacion("s1")).rejects.toThrow("ya fue procesada");
-    // No debe escribir nada si ya estaba procesada.
-    expect(mockState.captured.updates).toHaveLength(0);
-  });
-
-  it("lanza si la solicitud no existe", async () => {
-    mockState.selectResponses = [{ data: null, error: null }];
-    await expect(approveSolicitudModificacion("nope")).rejects.toThrow("no encontrada");
-  });
-
-  it("aprueba modificación de horas y propaga las horas a la práctica", async () => {
-    mockState.selectResponses = [
-      {
-        data: {
-          id: "s2",
-          estado: "pendiente",
-          tipo_modificacion: "horas",
-          horas_nuevas: 120,
-          practica_id: "prac-9",
-        },
-        error: null,
-      },
-    ];
-    mockState.writeResponses = [{ error: null }, { error: null }];
-
-    await approveSolicitudModificacion("s2", "ok admin");
-
-    // Marca la solicitud como aprobada con notas.
-    expect(mockState.captured.updates[0]).toMatchObject({
-      estado: "aprobada",
-      notas_admin: "ok admin",
+    await approveSolicitudModificacion({
+      solicitudId: "s2",
+      horasAprobadas: 90,
+      notasAdmin: "ok admin",
     });
-    // Actualiza horas_realizadas en practicas.
-    expect(mockState.captured.updates[1]).toMatchObject({ horas_realizadas: 120 });
-    expect(mockState.captured.froms).toContain("practicas");
-  });
 
-  it("impide aprobar una eliminación sin resolver su penalización", async () => {
-    mockState.selectResponses = [
-      {
-        data: {
-          id: "s3",
-          estado: "pendiente",
-          tipo_modificacion: "eliminacion",
-          horas_nuevas: null,
-          practica_id: "prac-3",
-        },
-        error: null,
-      },
-    ];
-    await expect(approveSolicitudModificacion("s3")).rejects.toThrow("penalización asociada");
-
+    expect(mockRpc).toHaveBeenCalledWith("aprobar_solicitud_modificacion_pps", {
+      p_solicitud_id: "s2",
+      p_horas_aprobadas: 90,
+      p_notas: "ok admin",
+    });
+    // Ninguna escritura suelta por fuera de la transacción.
     expect(mockState.captured.updates).toHaveLength(0);
     expect(mockState.captured.froms).not.toContain("practicas");
+  });
+
+  it("omite las horas cuando la modificación no es de horas", async () => {
+    mockRpc.mockResolvedValueOnce({ data: { id: "s4", estado: "aprobada" }, error: null });
+
+    await approveSolicitudModificacion({ solicitudId: "s4" });
+
+    expect(mockRpc).toHaveBeenCalledWith("aprobar_solicitud_modificacion_pps", {
+      p_solicitud_id: "s4",
+    });
+  });
+
+  it("propaga el rechazo de la base en vez de darlo por aprobado", async () => {
+    mockRpc.mockResolvedValueOnce({
+      data: null,
+      error: new Error("La solicitud ya fue procesada (estado: aprobada)."),
+    });
+
+    await expect(approveSolicitudModificacion({ solicitudId: "s1" })).rejects.toThrow(
+      "ya fue procesada"
+    );
   });
 });
 
@@ -236,74 +225,45 @@ describe("rejectSolicitudModificacion", () => {
 });
 
 describe("approveSolicitudNuevaPPS", () => {
-  it("crea una práctica Finalizada resolviendo el nombre de institución (join)", async () => {
-    mockState.selectResponses = [
-      // 1) fetch de la solicitud
-      {
-        data: {
-          id: "n1",
-          estado: "pendiente",
-          estudiante_id: "est-1",
-          orientacion: "Clínica",
-          fecha_inicio: "2026-03-01",
-          fecha_finalizacion: "2026-06-01",
-          horas_estimadas: 250,
-          es_online: true,
-          nombre_institucion_manual: null,
-          institucion: { nombre: "Hospital Italiano" },
-        },
-        error: null,
-      },
-      // 2) insert de la práctica -> .select().single()
-      { data: { id: "prac-new" }, error: null },
-    ];
-    mockState.writeResponses = [{ error: null }]; // update de la solicitud
+  it("delega en la RPC atómica, que crea la práctica y resuelve la solicitud juntas", async () => {
+    mockRpc.mockResolvedValueOnce({ data: { id: "prac-new" }, error: null });
 
-    const result = await approveSolicitudNuevaPPS("n1", "alta ok");
-
-    const practicaInsert = mockState.captured.inserts[0] as Record<string, unknown>;
-    expect(practicaInsert).toMatchObject({
-      estudiante_id: "est-1",
-      especialidad: "Clínica",
-      horas_realizadas: 250,
-      estado: "Finalizada",
-      nombre_institucion: "Hospital Italiano",
-      es_online: true,
+    const practica = await approveSolicitudNuevaPPS({
+      solicitudId: "n1",
+      horasAprobadas: 70,
+      notasAdmin: "alta ok",
     });
-    expect(result.practica).toMatchObject({ id: "prac-new" });
-  });
 
-  it("usa el nombre manual cuando no hay institución vinculada", async () => {
-    mockState.selectResponses = [
-      {
-        data: {
-          id: "n2",
-          estado: "pendiente",
-          estudiante_id: "est-2",
-          orientacion: "Laboral",
-          fecha_inicio: "2026-03-01",
-          fecha_finalizacion: "2026-06-01",
-          horas_estimadas: 100,
-          es_online: false,
-          nombre_institucion_manual: "Consultorio Externo",
-          institucion: null,
-        },
-        error: null,
-      },
-      { data: { id: "prac-new2" }, error: null },
-    ];
-    mockState.writeResponses = [{ error: null }];
-
-    await approveSolicitudNuevaPPS("n2");
-
-    const practicaInsert = mockState.captured.inserts[0] as Record<string, unknown>;
-    expect(practicaInsert).toMatchObject({ nombre_institucion: "Consultorio Externo" });
-  });
-
-  it("rechaza reprocesar una nueva PPS ya resuelta", async () => {
-    mockState.selectResponses = [{ data: { id: "n3", estado: "rechazada" }, error: null }];
-    await expect(approveSolicitudNuevaPPS("n3")).rejects.toThrow("ya fue procesada");
+    expect(mockRpc).toHaveBeenCalledWith("aprobar_solicitud_nueva_pps", {
+      p_solicitud_id: "n1",
+      p_horas_aprobadas: 70,
+      p_notas: "alta ok",
+    });
+    expect(practica).toMatchObject({ id: "prac-new" });
+    // El INSERT suelto que antes podía duplicarse al reintentar ya no existe.
     expect(mockState.captured.inserts).toHaveLength(0);
+  });
+
+  it("no llama a la base si no se indicaron las horas a acreditar", async () => {
+    await expect(approveSolicitudNuevaPPS({ solicitudId: "n2" })).rejects.toThrow(
+      "cuántas horas se acreditan"
+    );
+    await expect(
+      approveSolicitudNuevaPPS({ solicitudId: "n2", horasAprobadas: 0 })
+    ).rejects.toThrow("cuántas horas se acreditan");
+
+    expect(mockRpc).not.toHaveBeenCalled();
+  });
+
+  it("propaga el rechazo de la base en vez de darlo por aprobado", async () => {
+    mockRpc.mockResolvedValueOnce({
+      data: null,
+      error: new Error("La solicitud ya fue procesada (estado: rechazada)."),
+    });
+
+    await expect(
+      approveSolicitudNuevaPPS({ solicitudId: "n3", horasAprobadas: 70 })
+    ).rejects.toThrow("ya fue procesada");
   });
 });
 
