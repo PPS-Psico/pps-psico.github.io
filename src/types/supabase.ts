@@ -2982,6 +2982,8 @@ export type Database = {
           orientacion: string
           planilla_asistencia_url: string | null
           practica_id: string | null
+          resuelta_at: string | null
+          resuelta_por: string | null
           updated_at: string | null
         }
         Insert: {
@@ -3002,6 +3004,8 @@ export type Database = {
           orientacion: string
           planilla_asistencia_url?: string | null
           practica_id?: string | null
+          resuelta_at?: string | null
+          resuelta_por?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -3022,6 +3026,8 @@ export type Database = {
           orientacion?: string
           planilla_asistencia_url?: string | null
           practica_id?: string | null
+          resuelta_at?: string | null
+          resuelta_por?: string | null
           updated_at?: string | null
         }
         Relationships: [
@@ -4647,6 +4653,80 @@ export type Database = {
       read_moodle_practice_snapshots_v1: {
         Args: { p_student: string }
         Returns: Json
+      }
+      rechazar_solicitud_modificacion_pps: {
+        Args: {
+          p_comentario_rechazo: string
+          p_notas?: string
+          p_solicitud_id: string
+        }
+        Returns: {
+          comentario_rechazo: string | null
+          convocatoria_id: string | null
+          created_at: string | null
+          estado: string
+          estado_practica_snapshot: string | null
+          estudiante_id: string
+          fecha_inicio_snapshot: string | null
+          horas_aprobadas: number | null
+          horas_nuevas: number | null
+          id: string
+          lanzamiento_id: string | null
+          motivo_baja: string | null
+          motivo_baja_detalle: string | null
+          nombre_pps_snapshot: string | null
+          notas_admin: string | null
+          penalizacion_id: string | null
+          planilla_asistencia_url: string | null
+          practica_id: string | null
+          puntaje_penalizacion_aplicado: number | null
+          resuelta_at: string | null
+          resuelta_por: string | null
+          tipo_modificacion: string
+          tipo_penalizacion_aplicada: string | null
+          updated_at: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "solicitudes_modificacion_pps"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      rechazar_solicitud_nueva_pps: {
+        Args: {
+          p_comentario_rechazo: string
+          p_notas?: string
+          p_solicitud_id: string
+        }
+        Returns: {
+          comentario_rechazo: string | null
+          created_at: string | null
+          es_online: boolean
+          estado: string
+          estudiante_id: string
+          fecha_finalizacion: string
+          fecha_inicio: string
+          horas_aprobadas: number | null
+          horas_estimadas: number
+          id: string
+          informe_final_url: string
+          institucion_id: string | null
+          nombre_institucion_manual: string | null
+          notas_admin: string | null
+          orientacion: string
+          planilla_asistencia_url: string | null
+          practica_id: string | null
+          resuelta_at: string | null
+          resuelta_por: string | null
+          updated_at: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "solicitudes_nueva_pps"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       reconcile_moodle_task_intents_v1: {
         Args: { p_launch_id?: string }

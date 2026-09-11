@@ -74,9 +74,6 @@ import {
   submitSolicitudBajaPps,
 } from "../solicitudesService";
 
-const lastUpdate = () =>
-  mockState.captured.updates[mockState.captured.updates.length - 1] as Record<string, unknown>;
-
 beforeEach(() => {
   jest.clearAllMocks();
   mockState.selectResponses = [];
@@ -206,20 +203,22 @@ describe("solicitudes de baja de PPS", () => {
 });
 
 describe("rejectSolicitudModificacion", () => {
-  it("persiste estado rechazada y el comentario de rechazo", async () => {
-    mockState.writeResponses = [{ error: null }];
+  it("delega en la RPC, que exige que la solicitud siga pendiente", async () => {
+    mockRpc.mockResolvedValueOnce({ data: { id: "s4", estado: "rechazada" }, error: null });
 
     await rejectSolicitudModificacion("s4", "Faltan horas certificadas", "revisar");
 
-    expect(lastUpdate()).toMatchObject({
-      estado: "rechazada",
-      comentario_rechazo: "Faltan horas certificadas",
-      notas_admin: "revisar",
+    expect(mockRpc).toHaveBeenCalledWith("rechazar_solicitud_modificacion_pps", {
+      p_solicitud_id: "s4",
+      p_comentario_rechazo: "Faltan horas certificadas",
+      p_notas: "revisar",
     });
+    // El UPDATE directo que podía rechazar una solicitud ya aprobada ya no existe.
+    expect(mockState.captured.updates).toHaveLength(0);
   });
 
   it("propaga el error de la base sin tragárselo", async () => {
-    mockState.writeResponses = [{ error: { message: "RLS denied" } }];
+    mockRpc.mockResolvedValueOnce({ data: null, error: { message: "RLS denied" } });
     await expect(rejectSolicitudModificacion("s5", "motivo")).rejects.toBeTruthy();
   });
 });
@@ -268,13 +267,16 @@ describe("approveSolicitudNuevaPPS", () => {
 });
 
 describe("rejectSolicitudNuevaPPS", () => {
-  it("persiste estado rechazada y comentario", async () => {
-    mockState.writeResponses = [{ error: null }];
+  it("delega en la RPC, que exige que la solicitud siga pendiente", async () => {
+    mockRpc.mockResolvedValueOnce({ data: { id: "n4", estado: "rechazada" }, error: null });
+
     await rejectSolicitudNuevaPPS("n4", "No corresponde", "nota");
-    expect(lastUpdate()).toMatchObject({
-      estado: "rechazada",
-      comentario_rechazo: "No corresponde",
-      notas_admin: "nota",
+
+    expect(mockRpc).toHaveBeenCalledWith("rechazar_solicitud_nueva_pps", {
+      p_solicitud_id: "n4",
+      p_comentario_rechazo: "No corresponde",
+      p_notas: "nota",
     });
+    expect(mockState.captured.updates).toHaveLength(0);
   });
 });

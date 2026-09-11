@@ -453,6 +453,8 @@ export const rejectSolicitudModificacion = async (
   notasAdmin?: string
 ) => {
   if (solicitudId.startsWith("mock_")) {
+    const solicitudes = await mockDb.getAll("solicitudes_modificacion_pps", { id: solicitudId });
+    if (solicitudes[0]?.estado !== "pendiente") throw new Error("La solicitud ya fue procesada");
     await mockDb.update("solicitudes_modificacion_pps", solicitudId, {
       estado: "rechazada",
       comentario_rechazo: comentarioRechazo,
@@ -460,14 +462,12 @@ export const rejectSolicitudModificacion = async (
     });
     return;
   }
-  const { error } = await supabase
-    .from("solicitudes_modificacion_pps")
-    .update({
-      estado: "rechazada",
-      comentario_rechazo: comentarioRechazo,
-      notas_admin: notasAdmin,
-    })
-    .eq("id", solicitudId);
+
+  const { error } = await supabase.rpc("rechazar_solicitud_modificacion_pps", {
+    p_solicitud_id: solicitudId,
+    p_comentario_rechazo: comentarioRechazo,
+    ...(notasAdmin?.trim() ? { p_notas: notasAdmin.trim() } : {}),
+  });
 
   if (error) throw error;
 };
@@ -528,6 +528,8 @@ export const rejectSolicitudNuevaPPS = async (
   notasAdmin?: string
 ) => {
   if (solicitudId.startsWith("mock_")) {
+    const solicitudes = await mockDb.getAll("solicitudes_nueva_pps", { id: solicitudId });
+    if (solicitudes[0]?.estado !== "pendiente") throw new Error("La solicitud ya fue procesada");
     await mockDb.update("solicitudes_nueva_pps", solicitudId, {
       estado: "rechazada",
       comentario_rechazo: comentarioRechazo,
@@ -535,14 +537,12 @@ export const rejectSolicitudNuevaPPS = async (
     });
     return;
   }
-  const { error } = await supabase
-    .from("solicitudes_nueva_pps")
-    .update({
-      estado: "rechazada",
-      comentario_rechazo: comentarioRechazo,
-      notas_admin: notasAdmin,
-    })
-    .eq("id", solicitudId);
+
+  const { error } = await supabase.rpc("rechazar_solicitud_nueva_pps", {
+    p_solicitud_id: solicitudId,
+    p_comentario_rechazo: comentarioRechazo,
+    ...(notasAdmin?.trim() ? { p_notas: notasAdmin.trim() } : {}),
+  });
 
   if (error) throw error;
 };

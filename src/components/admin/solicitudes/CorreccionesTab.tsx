@@ -206,11 +206,16 @@ const CorreccionesTabView: React.FC<CorreccionesTabViewProps> = ({
                   onToast={onToast}
                   onReject={onReject}
                   onResolveBaja={(input) => resolveBajaMutation.mutateAsync(input)}
+                  /*
+                    mutateAsync y no mutate: el botón se rehabilita cuando esta
+                    promesa resuelve, y mutate devuelve void, así que volvía a
+                    quedar clickeable mientras la aprobación seguía en curso.
+                  */
                   onApprove={async (id, notas, horas) => {
                     if (sol.tipo_solicitud === "modificacion") {
-                      approveModMutation.mutate({ id, notas, horas });
+                      await approveModMutation.mutateAsync({ id, notas, horas });
                     } else {
-                      approveNuevaMutation.mutate({ id, notas, horas });
+                      await approveNuevaMutation.mutateAsync({ id, notas, horas });
                     }
                   }}
                 />
@@ -281,6 +286,8 @@ const CorreccionCardItem: React.FC<CorreccionCardItemProps> = ({
     setLoading(true);
     try {
       await onApprove(sol.id, adminNotes, decideHoras ? Number(horasAprobadas) : undefined);
+    } catch {
+      // El toast de error ya lo emite el onError de la mutación.
     } finally {
       setLoading(false);
     }
@@ -779,11 +786,13 @@ const CorreccionCardItem: React.FC<CorreccionCardItemProps> = ({
                 <div>
                   <label
                     className="label"
+                    htmlFor={`horas-acreditar-${sol.id}`}
                     style={{ display: "block", marginBottom: 6, fontSize: 9.5 }}
                   >
                     Horas a acreditar
                   </label>
                   <input
+                    id={`horas-acreditar-${sol.id}`}
                     type="number"
                     min={1}
                     value={horasAprobadas}
