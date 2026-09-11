@@ -5672,6 +5672,93 @@ html.dark .ah-aula__ext {
 }
 
 /* ── Preguntas frecuentes ── */
+.ah-aula__faq-search {
+  padding-top: 20px;
+}
+.ah-aula__faq-search label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 700;
+  color: var(--fg);
+}
+.ah-aula__faq-search-field {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 12px;
+  background: var(--bg);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  color: var(--fg-muted);
+}
+.ah-aula__faq-search-field:focus-within {
+  outline: 2px solid var(--primary-500);
+  outline-offset: 2px;
+}
+.ah-aula__faq-search-field > svg {
+  flex-shrink: 0;
+}
+.ah-aula__faq-search-field input {
+  min-width: 0;
+  width: 100%;
+  min-height: 44px;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--fg);
+  font: inherit;
+  font-size: 16px;
+}
+.ah-aula__faq-search-field input::-webkit-search-cancel-button {
+  display: none;
+}
+.ah-aula__faq-search-field button,
+.ah-aula__faq-empty button {
+  min-height: 44px;
+  padding: 8px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--fg);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.ah-aula__faq-search-field button:focus-visible,
+.ah-aula__faq-empty button:focus-visible {
+  outline: 2px solid var(--primary-500);
+}
+.ah-aula__faq-search p {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: var(--fg-muted);
+}
+.ah-aula__faq-search [role="status"]:empty {
+  display: none;
+}
+.ah-aula__faq-shell.is-searching {
+  grid-template-columns: minmax(0, 1fr);
+}
+.ah-aula__faq-shell.is-searching .ah-aula__faq-list {
+  animation: none;
+}
+.ah-aula__faq-result-category {
+  margin: 0;
+  padding: 16px 20px 0;
+  color: var(--fg-muted);
+  font-size: 12px;
+}
+.ah-aula__faq-empty {
+  padding: 24px 20px;
+  color: var(--fg-muted);
+}
+.ah-aula__faq-empty strong {
+  color: var(--fg);
+}
+.ah-aula__faq-empty p {
+  margin: 8px 0;
+}
 .ah-aula__faq-shell {
   display: grid;
   grid-template-columns: 250px minmax(0, 1fr);
@@ -5796,6 +5883,8 @@ html.dark .ah-aula__ext {
   outline-offset: -2px;
 }
 .ah-aula__faq-question span {
+  flex-shrink: 0;
+  white-space: nowrap;
   font: 600 12px/1 var(--font-mono);
   color: var(--primary-600);
 }
