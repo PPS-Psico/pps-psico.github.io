@@ -80,7 +80,10 @@ const JefeMoodleSyncNotice: React.FC<{ sync: JefeMoodleSyncState }> = ({ sync })
     detail = `${sync.taskCount} tareas revisadas · ${sync.pagesSaved ?? 0} páginas guardadas${observedLabel ? ` · ${observedLabel}` : ""}.`;
   } else if (sync.status === "partial") {
     icon = "rule";
-    title = sync.failedTasks > 0 ? "Lectura pausada" : "Avance guardado";
+    title =
+      sync.errorMessage || sync.failedTasks > 0
+        ? "Lectura pausada"
+        : "Actualizando informes desde Campus";
     const issues = [
       sync.failedTasks > 0 ? `${sync.failedTasks} tareas no se pudieron leer` : null,
       sync.ambiguous > 0 ? `${sync.ambiguous} entregas con prácticas duplicadas` : null,
@@ -88,7 +91,7 @@ const JefeMoodleSyncNotice: React.FC<{ sync: JefeMoodleSyncState }> = ({ sync })
     detail =
       sync.errorMessage ||
       issues.join(" · ") ||
-      `${sync.pagesSaved ?? 0} páginas guardadas. Quedan ${sync.pendingTasks ?? 0} tareas por revisar${sync.history ? ". Podés continuar cuando quieras." : "; la próxima tanda se leerá en un minuto."}`;
+      `${sync.pagesSaved ?? 0} páginas guardadas. Quedan ${sync.pendingTasks ?? 0} tareas por revisar${sync.history ? ". Podés continuar cuando quieras." : ". La lectura continúa automáticamente; podés usar el panel mientras tanto."}`;
   } else if (sync.status === "complete") {
     icon = "task_alt";
     title = "No hay tareas Moodle para sincronizar este año";
@@ -115,7 +118,8 @@ const JefeMoodleSyncNotice: React.FC<{ sync: JefeMoodleSyncState }> = ({ sync })
 
   const canRetry =
     sync.status === "error" ||
-    sync.status === "partial" ||
+    (sync.status === "partial" &&
+      (!!sync.errorMessage || !!sync.history || sync.failedTasks > 0)) ||
     (sync.status === "unavailable" && !!sync.errorMessage);
   return (
     <div className={`jefe-sync-notice jefe-sync-notice--${sync.status}`} role="status">

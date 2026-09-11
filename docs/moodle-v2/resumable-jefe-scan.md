@@ -34,8 +34,12 @@ año real del catálogo, no el año de autorización del capturador.
 Cada tanda inicia hasta cuatro páginas y deja de iniciar trabajo cuando consume
 45 segundos; la página en curso termina de guardarse. Las llamadas tienen sus
 propios límites de tiempo. El dashboard se invalida después de cada commit.
-Si quedan tareas y no hubo error, la siguiente tanda puede comenzar después de
-un minuto. El botón Pausar detiene esa continuación. Una tarea completa vuelve
+Si quedan tareas y la tanda guardó páginas sin error, la siguiente comienza
+automáticamente después de dos segundos, sin botón Continuar. Si otra pestaña
+ocupa la cola y no hubo avance, se espera un minuto antes de volver a consultar.
+El botón Pausar detiene esa continuación. Salir y volver a la vista conserva
+la continuación automática; una petición en curso termina antes de iniciar otra.
+Una tarea completa vuelve
 a ser elegible a los 30 minutos si tiene entregas pendientes, a las dos horas
 si es del año actual, o a los siete días si es histórica sin pendientes.
 

@@ -105,6 +105,42 @@ it("bounds a StrictMode run to four pages and publishes every receipt", async ()
   expect(invalidate).toHaveBeenCalledTimes(4);
   expect(result.current).toMatchObject({ status: "partial", pagesSaved: 4, accepted: 4 });
 });
+it("drains successive daily batches without a manual retry, then stops polling Moodle", async () => {
+  queue.mockImplementation(async () => (read.mock.calls.length < 10 ? available : finished));
+  const { result } = mount();
+  await advance(10_000);
+  expect(read).toHaveBeenCalledTimes(10);
+  expect(read.mock.calls.map((call) => call[1])).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+  expect(queue.mock.calls.every((call) => call[2] === false)).toBe(true);
+  expect(result.current.status).toBe("synced");
+  await advance(60_000);
+  expect(read).toHaveBeenCalledTimes(10);
+});
+it("finishes the in-flight page and automatically resumes after remount", async () => {
+  const response = await read(55, 0);
+  read.mockClear();
+  let finish!: (value: typeof response) => void;
+  read.mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      })
+  );
+  const first = mount();
+  await advance();
+  first.unmount();
+  const second = mount(first.key);
+  await advance(3_000);
+  expect(read).toHaveBeenCalledTimes(1);
+  queue.mockImplementation(async () => (read.mock.calls.length < 3 ? available : finished));
+  await act(async () => {
+    finish(response);
+  });
+  await advance(3_000);
+  expect(read.mock.calls.map((call) => call[1])).toEqual([0, 1, 2]);
+  expect(commit).toHaveBeenCalledTimes(3);
+  expect(second.result.current.status).toBe("synced");
+});
 it("stops on first transport failure and does not restart on intervals or remount", async () => {
   read.mockRejectedValue(new Error("Campus timeout"));
   const first = mount();
@@ -183,6 +219,8 @@ it("does not loop when another tab owns the task", async () => {
   await advance();
   expect(claim).toHaveBeenCalledTimes(1);
   expect(read).not.toHaveBeenCalled();
+  await advance(30_000);
+  expect(claim).toHaveBeenCalledTimes(1);
 });
 it("keeps history explicit and does not automatically drain it", async () => {
   queue.mockResolvedValue(finished);
