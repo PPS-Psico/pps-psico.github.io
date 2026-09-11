@@ -133,18 +133,24 @@ class Panel:
         return self._leer_paginado(path)
 
     def _leer_paginado(self, path: str) -> list[dict]:
-        """Relee desde cero con orden estable.
+        """Relee desde cero con orden estable, respetando limit y offset.
 
-        El offset sin ORDER BY puede repetir o saltear filas entre paginas, asi
-        que si quien llama no eligio un orden se fija uno. Un `limit` explicito se
-        respeta como tope.
+        Paginar por offset necesita un orden total. No alcanza con que haya un
+        `order`: si empata, el corte entre paginas queda librado al azar y una
+        fila puede repetirse o perderse. En `whatsapp_mensajes` hay timestamps
+        repetidos, asi que se agrega `id` como desempate salvo que ya ordene por
+        el. El `offset` de quien llama es el punto de partida, no se pisa.
         """
         base, _, query = path.partition("?")
         crudos = urllib.parse.parse_qsl(query, keep_blank_values=True)
         tope = next((int(v) for k, v in crudos if k == "limit"), None)
+        desde = next((int(v) for k, v in crudos if k == "offset"), 0)
         params = [(k, v) for k, v in crudos if k not in ("limit", "offset")]
-        if not any(k == "order" for k, _ in params):
-            params.append(("order", "id"))
+
+        orden = next((v for k, v in params if k == "order"), "")
+        if "id" not in [c.split(".")[0] for c in orden.split(",") if c]:
+            params = [(k, v) for k, v in params if k != "order"]
+            params.append(("order", f"{orden},id" if orden else "id"))
 
         filas: list[dict] = []
         while True:
@@ -152,7 +158,7 @@ class Panel:
             if pedido <= 0:
                 return filas
             consulta = urllib.parse.urlencode(
-                params + [("limit", pedido), ("offset", len(filas))])
+                params + [("limit", pedido), ("offset", desde + len(filas))])
             lote = self._req("GET", f"{base}?{consulta}")
             filas += lote
             if len(lote) < pedido:
