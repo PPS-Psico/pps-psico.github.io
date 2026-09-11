@@ -53,6 +53,10 @@ if hasattr(sys.stdout, "reconfigure"):
 
 REPO = Path(__file__).resolve().parents[2]
 
+# Tope de filas por respuesta que impone PostgREST (max-rows). Pedir mas no sirve:
+# recorta en silencio.
+PAGINA = 1000
+
 # Estados que sacan a una solicitud del tablero: ya se resolvio, para bien o para mal.
 ESTADOS_CERRADOS = ["Realizada", "No se pudo concretar", "Archivado"]
 
@@ -117,7 +121,42 @@ class Panel:
             return json.loads(crudo) if crudo.strip() else []
 
     def get(self, path: str) -> list[dict]:
-        return self._req("GET", path)
+        """Lee todas las filas, paginando cuando hace falta.
+
+        PostgREST corta cada respuesta en `max-rows` (1000) aunque se pida mas, y
+        no avisa: `limit=5000` devuelve 1000 y quien llama sigue como si eso fuera
+        la tabla entera. Si la primera pagina vuelve llena, hay que ir por el resto.
+        """
+        primera = self._req("GET", path)
+        if len(primera) < PAGINA:
+            return primera
+        return self._leer_paginado(path)
+
+    def _leer_paginado(self, path: str) -> list[dict]:
+        """Relee desde cero con orden estable.
+
+        El offset sin ORDER BY puede repetir o saltear filas entre paginas, asi
+        que si quien llama no eligio un orden se fija uno. Un `limit` explicito se
+        respeta como tope.
+        """
+        base, _, query = path.partition("?")
+        crudos = urllib.parse.parse_qsl(query, keep_blank_values=True)
+        tope = next((int(v) for k, v in crudos if k == "limit"), None)
+        params = [(k, v) for k, v in crudos if k not in ("limit", "offset")]
+        if not any(k == "order" for k, _ in params):
+            params.append(("order", "id"))
+
+        filas: list[dict] = []
+        while True:
+            pedido = PAGINA if tope is None else min(PAGINA, tope - len(filas))
+            if pedido <= 0:
+                return filas
+            consulta = urllib.parse.urlencode(
+                params + [("limit", pedido), ("offset", len(filas))])
+            lote = self._req("GET", f"{base}?{consulta}")
+            filas += lote
+            if len(lote) < pedido:
+                return filas
 
     def patch(self, path: str, cuerpo: dict) -> list[dict]:
         return self._req("PATCH", path, cuerpo)
