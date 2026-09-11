@@ -1392,6 +1392,7 @@ export type Database = {
           id: string
           informe: string | null
           institucion_id: string | null
+          institucion_uuid: string | null
           lista_estudiantes_entregada_at: string | null
           lista_estudiantes_entregada_por: string | null
           mensaje_whatsapp: string | null
@@ -1446,6 +1447,7 @@ export type Database = {
           id?: string
           informe?: string | null
           institucion_id?: string | null
+          institucion_uuid?: string | null
           lista_estudiantes_entregada_at?: string | null
           lista_estudiantes_entregada_por?: string | null
           mensaje_whatsapp?: string | null
@@ -1500,6 +1502,7 @@ export type Database = {
           id?: string
           informe?: string | null
           institucion_id?: string | null
+          institucion_uuid?: string | null
           lista_estudiantes_entregada_at?: string | null
           lista_estudiantes_entregada_por?: string | null
           mensaje_whatsapp?: string | null
@@ -1525,6 +1528,13 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "lanzamientos_pps_institucion_uuid_fkey"
+            columns: ["institucion_uuid"]
+            isOneToOne: false
+            referencedRelation: "instituciones"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "lanzamientos_pps_unidad_id_fkey"
             columns: ["unidad_id"]
