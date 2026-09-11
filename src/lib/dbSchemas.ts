@@ -151,7 +151,7 @@ export const lanzamientoSchema = z
     horarios_obligatorios: strArr,
     horas_acreditadas: num,
     informe: str,
-    institucion_id: str,
+    institucion_uuid: str,
     mensaje_whatsapp: str,
     nombre_pps: str,
     notas_gestion: str,

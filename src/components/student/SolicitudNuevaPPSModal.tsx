@@ -18,7 +18,7 @@ import { getErrorMessage } from "../../utils/getErrorMessage";
 /** Proyección parcial de lanzamiento usada por el modal (datos del select + extras opcionales). */
 interface LanzamientoLite {
   id: string;
-  institucion_id: string | null;
+  institucion_uuid: string | null;
   cupos_disponibles?: number | null;
   created_at?: string;
   [key: string]: unknown;
@@ -92,7 +92,7 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
         supabase
           .from("lanzamientos_pps")
           .select(
-            "id, institucion_id, cupos_disponibles, horas_acreditadas, orientacion, es_online, created_at"
+            "id, institucion_uuid, cupos_disponibles, horas_acreditadas, orientacion, es_online, created_at"
           )
           .order("created_at", { ascending: false }),
         { table: "lanzamientos_pps", operation: "lanzamientosParaSolicitud" }
@@ -102,13 +102,13 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
     enabled: isOpen,
   });
 
-  // Agrupar lanzamientos por institucion_id para filtrar por cupos
+  // Agrupar lanzamientos por institución para filtrar por cupos
   const lanzamientosPorInstitucion = useMemo(() => {
     const map = new Map<string, LanzamientoLite[]>();
     for (const l of lanzamientos) {
-      const existing = map.get(l.institucion_id || "") || [];
+      const existing = map.get(l.institucion_uuid || "") || [];
       existing.push(l);
-      map.set(l.institucion_id || "", existing);
+      map.set(l.institucion_uuid || "", existing);
     }
     return map;
   }, [lanzamientos]);
@@ -129,7 +129,7 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
   // Filtrar lanzamientos que coincidan con la institución seleccionada
   const lanzamientosDeInstitucion = useMemo(() => {
     if (!institucionSeleccionada) return [];
-    return lanzamientos.filter((l) => l.institucion_id === institucionSeleccionada.id);
+    return lanzamientos.filter((l) => l.institucion_uuid === institucionSeleccionada.id);
   }, [lanzamientos, institucionSeleccionada]);
 
   const maxHorasPermitidas = useMemo(() => {
