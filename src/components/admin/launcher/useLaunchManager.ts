@@ -894,11 +894,12 @@ export function useLaunchManager(isTestingMode: boolean, forcedTab?: "new" | "hi
       !formData.fechaInicio ||
       !safeOrientacion.length ||
       !hasHours ||
+      !selectedInstitution?.id ||
       invalidOption
     ) {
       setToastInfo({
         message:
-          "Por favor, complete los campos requeridos (Nombre, Fecha de inicio, Orientación, Horas).",
+          "Por favor, complete los campos requeridos (Nombre, Fecha de inicio, Orientación, Horas, Institución).",
         type: "error",
       });
       return;
@@ -1000,7 +1001,7 @@ export function useLaunchManager(isTestingMode: boolean, forcedTab?: "new" | "hi
       [FIELD_HORARIOS_OBLIGATORIOS_LANZAMIENTOS]: horariosObligatorios,
       [FIELD_FECHA_ENCUENTRO_INICIAL_LANZAMIENTOS]: formData.fechaEncuentroInicial || null,
       [FIELD_CODIGO_CAMPUS_LANZAMIENTOS]: (formData.linkTareaCampus || "").trim() || null,
-      [FIELD_INSTITUCION_LINK_PRACTICAS]: selectedInstitution?.id || "recInstMock_nuevo",
+      [FIELD_INSTITUCION_LINK_PRACTICAS]: selectedInstitution?.id ?? null,
     };
 
     createLaunchMutation.mutate(finalPayload);
