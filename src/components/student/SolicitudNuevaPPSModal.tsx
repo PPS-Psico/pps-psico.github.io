@@ -92,7 +92,7 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
         supabase
           .from("lanzamientos_pps")
           .select(
-            "id, institucion_uuid, cupos_disponibles, horas_acreditadas, orientacion, es_online, created_at"
+            "id, institucion_uuid, cupos_disponibles, horas_acreditadas, orientacion, created_at"
           )
           .order("created_at", { ascending: false }),
         { table: "lanzamientos_pps", operation: "lanzamientosParaSolicitud" }
@@ -182,13 +182,12 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
         setHorasEstimadas(String(ultimoLanzamiento[FIELD_HORAS_ACREDITADAS_LANZAMIENTOS]));
       }
 
-      // Verificar si es online (Inteligente)
-      const modalidad =
-        (ultimoLanzamiento as Record<string, unknown>).modalidad_online === "Online" ||
-        (ultimoLanzamiento as Record<string, unknown>).modalidad_online === true ||
-        (ultimoLanzamiento as Record<string, unknown>).modalidad === "Online" ||
-        (ultimoLanzamiento as Record<string, unknown>).es_online === true;
-      setEsOnline(modalidad);
+      /*
+        No se autocompleta la modalidad: el lanzamiento no la guarda. Este bloque
+        miraba modalidad_online, modalidad y es_online, y ninguna de las tres
+        existe en lanzamientos_pps, asi que siempre daba false y pisaba lo que
+        hubiera marcado el estudiante. La elige el estudiante.
+      */
     }
 
     // Si no se pudo obtener orientación del lanzamiento, intentar desde los metadatos de la institución
