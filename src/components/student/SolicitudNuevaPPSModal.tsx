@@ -74,6 +74,8 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
   const [searchTerm, setSearchTerm] = useState("");
   const [showResults, setShowResults] = useState(false);
   const lastAutocompletedInstId = useRef<string | null>(null);
+  // Una vez que el estudiante escribe una cantidad, el autocompletado no la pisa.
+  const horasEditadasPorElEstudiante = useRef(false);
 
   // Fetch instituciones y lanzamientos
   const { data: instituciones = [] } = useQuery({
@@ -90,7 +92,7 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
     enabled: isOpen,
   });
 
-  const { data: lanzamientos = [] } = useQuery<LanzamientoLite[]>({
+  const { data: lanzamientos = [], isPending: lanzamientosCargando } = useQuery<LanzamientoLite[]>({
     queryKey: ["lanzamientos_pps"],
     queryFn: async () => {
       const data = await runQuery(
@@ -159,6 +161,14 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
       return;
     }
 
+    /*
+      Esperar a que lleguen los lanzamientos. Antes se marcaba la institucion
+      como procesada enseguida: si el alumno la elegia con la consulta todavia
+      en vuelo, al llegar los datos el efecto salia por el return de arriba y el
+      autocompletado se perdia para siempre.
+    */
+    if (lanzamientosCargando) return;
+
     if (lastAutocompletedInstId.current === institucionSeleccionada.id) return;
     lastAutocompletedInstId.current = institucionSeleccionada.id;
 
@@ -184,9 +194,9 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
         }
       }
 
-      // Autocompletar horas
-      if (ultimoLanzamiento[FIELD_HORAS_ACREDITADAS_LANZAMIENTOS]) {
-        setHorasEstimadas(String(ultimoLanzamiento[FIELD_HORAS_ACREDITADAS_LANZAMIENTOS]));
+      // Autocompletar horas, sin pisar lo que el estudiante haya escrito.
+      if (horasDeLaConvocatoria !== null && !horasEditadasPorElEstudiante.current) {
+        setHorasEstimadas(String(horasDeLaConvocatoria));
       }
 
       /*
@@ -204,7 +214,13 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
         setOrientacion(found);
       }
     }
-  }, [institucionSeleccionada, lanzamientosDeInstitucion, isOpen]);
+  }, [
+    institucionSeleccionada,
+    lanzamientosDeInstitucion,
+    isOpen,
+    lanzamientosCargando,
+    horasDeLaConvocatoria,
+  ]);
 
   const resetForm = () => {
     setNombreInstitucionManual("");
@@ -212,6 +228,7 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
     setFechaInicio("");
     setFechaFinalizacion("");
     setHorasEstimadas("");
+    horasEditadasPorElEstudiante.current = false;
     setEsOnline(false);
     setPlanillaFile(null);
     setInformeFile(null);
@@ -651,7 +668,10 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
               <input
                 type="number"
                 value={horasEstimadas}
-                onChange={(e) => setHorasEstimadas(e.target.value)}
+                onChange={(e) => {
+                  horasEditadasPorElEstudiante.current = true;
+                  setHorasEstimadas(e.target.value);
+                }}
                 placeholder="Ej: 80"
                 min="1"
                 className="w-full px-4 py-3 rounded-xl outline-none focus:ring-2 transition"
@@ -659,7 +679,7 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
               />
               <p className="text-xs mt-1" style={{ color: "var(--ink-subtle)" }}>
                 {horasDeLaConvocatoria !== null
-                  ? `Esta PPS acredita ${horasDeLaConvocatoria} horas. Podés pedir otra cantidad si corresponde; la coordinación define cuántas se acreditan.`
+                  ? `De referencia: la última convocatoria de esta institución acreditó ${horasDeLaConvocatoria} horas. Si la tuya fue distinta, cambiá el número; la coordinación define cuántas se acreditan.`
                   : "La coordinación define cuántas horas se acreditan al aprobar la solicitud."}
               </p>
             </div>
