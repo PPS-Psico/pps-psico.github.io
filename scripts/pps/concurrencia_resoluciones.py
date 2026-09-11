@@ -245,6 +245,15 @@ class Arnes:
                 (self.estudiante_id,),
             )
             cur.execute("delete from public.practicas where estudiante_id = %s", (self.estudiante_id,))
+            # La aprobacion de una baja crea una penalizacion, y penalizaciones
+            # tiene una FK NO ACTION hacia estudiantes: sin esto el borrado del
+            # estudiante sintetico falla y queda residuo.
+            cur.execute(
+                "delete from public.penalizaciones where estudiante_id = %s", (self.estudiante_id,)
+            )
+            cur.execute(
+                "delete from public.convocatorias where estudiante_id = %s", (self.estudiante_id,)
+            )
             cur.execute("delete from public.estudiantes where id = %s", (self.estudiante_id,))
             cur.execute(
                 "delete from public.lanzamientos_pps where institucion_uuid = %s",
