@@ -2,6 +2,14 @@
 
 Última actualización: 9 de septiembre de 2026
 
+## Lectura reanudable · 11 de septiembre
+
+Implementación y contrato: [lectura por páginas](resumable-jefe-scan.md).
+Migración `20260910112441` aplicada con ledger; puente instalado en General del
+curso 3615 preservando el resto del HTML. Pruebas SQL con rollback aprobadas.
+La publicación del frontend y la prueba real de Selva están pendientes en esta
+etapa; no considerar cerrado WP-05 hasta registrar ese resultado.
+
 ## Correcciones capturadas · 9 de septiembre
 
 Implementado el [reprocesamiento automático de evidencia](automatic-evidence-reconciliation.md).

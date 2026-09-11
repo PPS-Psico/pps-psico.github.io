@@ -951,6 +951,8 @@
 
     function fetchJefeGradingPage(cmid, page, budgetMs) {
       var controller = new AbortController();
+      var failureStatus = "parse_error";
+      var failureCode = "grading_page_unavailable";
       var timer = window.setTimeout(
         function () {
           controller.abort();
@@ -975,16 +977,21 @@
         headers: { Accept: "text/html" },
       })
         .then(function (response) {
-          if (!response.ok || response.url.indexOf("/login/") > -1) return null;
+          if (response.url.indexOf("/login/") > -1) {
+            failureStatus = "no_access";
+            failureCode = "campus_session_expired";
+            return null;
+          }
+          if (!response.ok) return null;
           return response.text();
         })
         .then(function (html) {
-          if (!html) return jefeTaskFailure(cmid, "no_access", "grading_page_unavailable");
+          if (!html) return jefeTaskFailure(cmid, failureStatus, failureCode);
           var doc = new DOMParser().parseFromString(html, "text/html");
           return parseJefeGradingDocument(cmid, doc);
         })
         .catch(function () {
-          return jefeTaskFailure(cmid, "no_access", "grading_page_unavailable");
+          return jefeTaskFailure(cmid, "parse_error", "grading_page_unavailable");
         })
         .finally(function () {
           window.clearTimeout(timer);
@@ -1180,6 +1187,7 @@
             requestId: data.requestId,
             courseId: COURSE_ID,
             discovery: esEstudiante(),
+            jefePages: true,
           },
           PANEL_ORIGIN
         );
@@ -1257,6 +1265,40 @@
           .catch(function () {
             // Fallo cerrado: sin ticket el panel sólo permite iniciar sesión.
           });
+        return;
+      }
+
+      if (
+        data.type === "PPS_MOODLE_JEFE_PAGE_REQUEST" &&
+        data.version === 2 &&
+        data.courseId === COURSE_ID &&
+        typeof data.requestId === "string" &&
+        /^[0-9a-f-]{36}$/i.test(data.requestId) &&
+        Number.isSafeInteger(data.cmid) &&
+        data.cmid > 0 &&
+        Number.isInteger(data.page) &&
+        data.page >= 0 &&
+        data.page < 24
+      ) {
+        fetchJefeGradingPage(data.cmid, data.page, 10000).then(function (task) {
+          f.contentWindow.postMessage(
+            {
+              type: "PPS_MOODLE_JEFE_PAGE_RESULT",
+              version: 2,
+              requestId: data.requestId,
+              courseId: COURSE_ID,
+              page: data.page,
+              observedAt: new Date().toISOString(),
+              moodleUserId: Number(embed.getAttribute("data-moodle-user-id")),
+              moodleUsername: cleanText(embed.getAttribute("data-moodle-username")).replace(
+                /\D/g,
+                ""
+              ),
+              task: task,
+            },
+            PANEL_ORIGIN
+          );
+        });
         return;
       }
 

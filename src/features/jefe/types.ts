@@ -168,6 +168,12 @@ export type JefeMoodleSyncState = {
   lastObservedAt: string | null;
   errorMessage: string | null;
   retry: () => Promise<void>;
+  pagesSaved?: number;
+  pendingTasks?: number;
+  currentTask?: string | null;
+  history?: boolean;
+  pause?: () => void;
+  reviewHistory?: () => Promise<void>;
 };
 
 export type JefeViewId = "inicio" | "informes" | "panorama" | "practicas" | "estudiantes";
