@@ -31,7 +31,7 @@ import {
   FIELD_HORARIOS_FIJOS_LANZAMIENTOS,
   FIELD_HORARIOS_OBLIGATORIOS_LANZAMIENTOS,
   FIELD_HORAS_ACREDITADAS_LANZAMIENTOS,
-  FIELD_INSTITUCION_LINK_PRACTICAS,
+  FIELD_INSTITUCION_LINK_LANZAMIENTOS,
   FIELD_LOGO_INVERT_DARK_INSTITUCIONES,
   FIELD_LOGO_URL_INSTITUCIONES,
   FIELD_MENSAJE_WHATSAPP_LANZAMIENTOS,
@@ -176,7 +176,7 @@ export function useLaunchManager(isTestingMode: boolean, forcedTab?: "new" | "hi
       }
 
       let records = await db.lanzamientos.get({
-        filters: { institucion_id: selectedInstitution.id },
+        filters: { [FIELD_INSTITUCION_LINK_LANZAMIENTOS]: selectedInstitution.id },
         sort: [{ field: "fecha_inicio", direction: "desc" }],
         maxRecords: 1,
       });
@@ -1001,7 +1001,7 @@ export function useLaunchManager(isTestingMode: boolean, forcedTab?: "new" | "hi
       [FIELD_HORARIOS_OBLIGATORIOS_LANZAMIENTOS]: horariosObligatorios,
       [FIELD_FECHA_ENCUENTRO_INICIAL_LANZAMIENTOS]: formData.fechaEncuentroInicial || null,
       [FIELD_CODIGO_CAMPUS_LANZAMIENTOS]: (formData.linkTareaCampus || "").trim() || null,
-      [FIELD_INSTITUCION_LINK_PRACTICAS]: selectedInstitution?.id ?? null,
+      [FIELD_INSTITUCION_LINK_LANZAMIENTOS]: selectedInstitution?.id ?? null,
     };
 
     createLaunchMutation.mutate(finalPayload);

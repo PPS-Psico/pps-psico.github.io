@@ -134,7 +134,13 @@ export const FIELD_FINALIZACION_POR_HORAS_LANZAMIENTOS = "finalizacion_por_horas
 export const FIELD_FECHA_RELANZAMIENTO_LANZAMIENTOS = "fecha_relanzamiento";
 export const FIELD_PROXIMO_SEGUIMIENTO_LANZAMIENTOS = "proximo_seguimiento";
 export const FIELD_DIRECCION_LANZAMIENTOS = "direccion";
-export const FIELD_INSTITUCION_LINK_LANZAMIENTOS = "institucion_id";
+/*
+  La institución del lanzamiento vive en `institucion_uuid`, con FK real a
+  instituciones. La columna `institucion_id` (text, sin FK) es la legacy que se
+  está retirando: todavía existe y se mantiene sincronizada por trigger, pero
+  nada debe volver a leerla ni escribirla.
+*/
+export const FIELD_INSTITUCION_LINK_LANZAMIENTOS = "institucion_uuid";
 export const FIELD_REQ_CERTIFICADO_TRABAJO_LANZAMIENTOS = "req_certificado_trabajo";
 export const FIELD_REQ_CV_LANZAMIENTOS = "req_cv";
 export const FIELD_NOTAS_GESTION_LANZAMIENTOS = "notas_gestion";
