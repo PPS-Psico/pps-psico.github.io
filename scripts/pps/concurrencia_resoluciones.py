@@ -580,10 +580,13 @@ def escenario_dos_solicitudes_misma_practica(arnes: Arnes) -> Resultado:
     vistas = leer(
         arnes, "select horas_realizadas from public.practicas where id = %s", (arnes.practica_id,)
     )[0]
+    # Otro escenario pudo dejarla en 100. A debe cambiar efectivamente el
+    # testigo: guardar otra vez el mismo valor no produce una pantalla obsoleta.
+    primera_decision = 90 if vistas != 90 else 100
 
     ra, rb, ok = competir(
         arnes,
-        _op_aprobar_mod(sid_a, 100, int(vistas)),
+        _op_aprobar_mod(sid_a, primera_decision, int(vistas)),
         _op_aprobar_mod(sid_b, 120, int(vistas)),
     )
     if not ok:
@@ -597,11 +600,21 @@ def escenario_dos_solicitudes_misma_practica(arnes: Arnes) -> Resultado:
     if rb[0] != "error" or rb[1] != "45001":
         return Resultado(nombre, "falla",
                          f"la segunda piso a la primera sin avisar: {rb}")
-    if horas != 100:
+    if horas != primera_decision:
         return Resultado(nombre, "falla",
                          f"la practica quedo en {horas} h, deberia tener la decision de la primera")
+    if leer(arnes, "select estado from public.solicitudes_modificacion_pps where id = %s", (sid_b,))[0] != "pendiente":
+        return Resultado(nombre, "falla", "el conflicto no conservó pendiente la segunda solicitud")
+    # Tras revisar el valor fresco, una nueva confirmación sí debe poder avanzar.
+    with arnes.conectar() as conn, conn.cursor() as cur:
+        _op_aprobar_mod(sid_b, 120, primera_decision)(cur)
+    horas_finales = leer(
+        arnes, "select horas_realizadas from public.practicas where id = %s", (arnes.practica_id,)
+    )[0]
+    if horas_finales != 120:
+        return Resultado(nombre, "falla", "la confirmación con valor fresco no aplicó 120 h")
     return Resultado(nombre, "ok",
-                     "la segunda aviso que la practica habia cambiado y no la piso")
+                     "45001 sin sobrescritura; tras revisar el valor fresco se confirmó 120 h")
 
 
 ESCENARIOS = [
