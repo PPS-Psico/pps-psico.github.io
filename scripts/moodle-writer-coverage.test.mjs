@@ -85,10 +85,30 @@ test("special activities, withdrawals and explicit historical scope are counted 
     scopedPractices: 0,
     linkedPractices: 0,
     uncoveredPractices: 0,
+    archivedFinalizedPractices: 0,
     excludedSpecial: 1,
     excludedWithdrawn: 1,
     historicalBefore2024: 1,
   });
+});
+
+test("archives missing destinations of effectively finalized students without modifying history", () => {
+  const data = base();
+  data.practices = [{ ...practice, estudiante_id: "s", estado: "En curso" }];
+  data.students = [{ id: "s", estado: "Finalizado", fecha_finalizacion: "2024-08-15" }];
+  const before = structuredClone(data);
+  const result = assessCoverage(data);
+  assert.equal(result.summary.archivedFinalizedPractices, 1);
+  assert.equal(result.summary.uncoveredPractices, 0);
+  assert.equal(result.summary.linkedPractices, 0);
+  assert.equal(result.attention.length, 0);
+  assert.equal(result.archived[0].finalizedAt, "2024-08-15");
+  assert.deepEqual(data, before);
+  data.students[0].estado = "Activo";
+  assert.equal(assessCoverage(data).summary.uncoveredPractices, 1);
+  data.students[0].estado = "Finalizado";
+  data.students[0].fecha_finalizacion = null;
+  assert.equal(assessCoverage(data).summary.uncoveredPractices, 1);
 });
 test("pagination reads beyond 1000 and propagates later-page failures", async () => {
   const rows = Array.from({ length: 1201 }, (_, id) => ({ id }));

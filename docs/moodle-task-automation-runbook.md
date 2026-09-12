@@ -194,6 +194,17 @@ Reconcile es idempotente y sólo procesa la política dedicated. La elegibilidad
 incluye prácticas reales aunque el lanzamiento siga Cerrado; no convierte
 históricos ni escribe Moodle. Los triggers usan la misma regla.
 
+Desde el 12/09/2026, los destinos faltantes de estudiantes con
+`estado = Finalizado` y `fecha_finalizacion` registrada se archivan como
+`archivedCoverage` / `STUDENT_FINALIZED`. Se cuentan en
+`coverage.archivedFinalizedPractices`, no en las incidencias activas. No se
+modifican ni borran prácticas, calificaciones o tareas Moodle. Una práctica
+`Finalizada` o una cuenta inactiva no basta; un vínculo ambiguo tampoco se
+archiva. Si el estudiante vuelve a Activo, el faltante reaparece. Decisión de
+Blas: archivar las incidencias de quienes ya finalizaron las PPS y resolver
+las de quienes siguen activos. El total en alcance se descompone en vinculadas,
+sin cobertura y archivadas por finalización.
+
 El dry-run pagina todas las tablas y agrega `coverage` y `coverage_gap` a
 `attention`. Una cola vacía no equivale a cobertura completa. Audita PPS desde
 2024 y sin fecha; contabiliza por separado anteriores a 2024, bajas y actividades

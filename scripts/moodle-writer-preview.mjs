@@ -33,6 +33,7 @@ try {
             ? "attention"
             : state.status,
         coverage: coverage.summary,
+        archivedCoverage: coverage.archived,
         attention: [
           ...state.attention.map((r) => ({
             intentId: r.id,
