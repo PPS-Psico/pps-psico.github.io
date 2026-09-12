@@ -29,7 +29,17 @@ export async function readAll(queryFactory) {
   }
 }
 
-export function assessCoverage({ practices, launches, links, practiceLinks, catalog, intents }) {
+export function assessCoverage({
+  practices,
+  launches,
+  links,
+  practiceLinks,
+  catalog,
+  intents,
+  students = [],
+}) {
+  const studentById = new Map(students.map((student) => [student.id, student]));
+  const archived = [];
   const launchById = new Map(launches.map((l) => [l.id, l]));
   const validTasks = new Set(
     catalog
@@ -45,6 +55,7 @@ export function assessCoverage({ practices, launches, links, practiceLinks, cata
     scopedPractices: 0,
     linkedPractices: 0,
     uncoveredPractices: 0,
+    archivedFinalizedPractices: 0,
     excludedSpecial: 0,
     excludedWithdrawn: 0,
     historicalBefore2024: 0,
@@ -74,6 +85,23 @@ export function assessCoverage({ practices, launches, links, practiceLinks, cata
     const candidates = direct.length ? direct : unit;
     if (candidates.length === 1) {
       summary.linkedPractices++;
+      continue;
+    }
+    const student = studentById.get(p.estudiante_id);
+    // Archive missing destinations only after effective student completion.
+    // A finished practice, inactivity or a completion request is insufficient.
+    // Ambiguous existing links still need review, even for finalized students.
+    if (
+      candidates.length === 0 &&
+      student?.estado === "Finalizado" &&
+      /^\d{4}-\d{2}-\d{2}$/.test(student.fecha_finalizacion ?? "")
+    ) {
+      summary.archivedFinalizedPractices++;
+      archived.push({
+        practiceId: p.id,
+        reason: "STUDENT_FINALIZED",
+        finalizedAt: student.fecha_finalizacion,
+      });
       continue;
     }
     summary.uncoveredPractices++;
@@ -112,6 +140,7 @@ export function assessCoverage({ practices, launches, links, practiceLinks, cata
   }
   return {
     summary,
+    archived,
     attention: [...groups.values()].map((g) => ({ ...g, practiceCount: g.practiceIds.length })),
   };
 }
@@ -120,8 +149,9 @@ export async function practiceCoverage(client) {
   const definitions = {
     practices: [
       "practicas",
-      "id,lanzamiento_id,nombre_institucion,especialidad,fecha_inicio,estado,tipo_actividad",
+      "id,estudiante_id,lanzamiento_id,nombre_institucion,especialidad,fecha_inicio,estado,tipo_actividad",
     ],
+    students: ["estudiantes", "id,estado,fecha_finalizacion"],
     launches: ["lanzamientos_pps", "id,nombre_pps,fecha_inicio,moodle_task_policy"],
     links: [
       "lanzamiento_moodle_tareas",
