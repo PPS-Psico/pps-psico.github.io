@@ -86,10 +86,28 @@ test("special activities, withdrawals and explicit historical scope are counted 
     linkedPractices: 0,
     uncoveredPractices: 0,
     archivedFinalizedPractices: 0,
+    archivedTestPractices: 0,
     excludedSpecial: 1,
     excludedWithdrawn: 1,
     historicalBefore2024: 1,
   });
+});
+
+test("archives only the explicitly confirmed AYUN test record", () => {
+  const data = base();
+  data.practices = [
+    {
+      ...practice,
+      id: "4503e4ea-e037-40a0-b6f4-dad8222f860c",
+      lanzamiento_id: "52b05826-cee4-42d8-b791-c7a3c80bb566",
+    },
+  ];
+  assert.equal(assessCoverage(data).summary.archivedTestPractices, 1);
+  assert.equal(assessCoverage(data).attention.length, 0);
+  data.practices.push({ ...data.practices[0], id: "another-practice" });
+  assert.equal(assessCoverage(data).summary.uncoveredPractices, 1);
+  data.practices[0].lanzamiento_id = "different-launch";
+  assert.equal(assessCoverage(data).summary.archivedTestPractices, 0);
 });
 
 test("archives missing destinations of effectively finalized students without modifying history", () => {
