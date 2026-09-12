@@ -56,6 +56,7 @@ export function assessCoverage({
     linkedPractices: 0,
     uncoveredPractices: 0,
     archivedFinalizedPractices: 0,
+    archivedTestPractices: 0,
     excludedSpecial: 0,
     excludedWithdrawn: 0,
     historicalBefore2024: 0,
@@ -88,6 +89,21 @@ export function assessCoverage({
       continue;
     }
     const student = studentById.get(p.estudiante_id);
+    // Explicit confirmation by the project owner on 2026-09-12: this exact
+    // AYUN record is fictitious. Never exclude an entire account or institution.
+    if (
+      candidates.length === 0 &&
+      p.id === "4503e4ea-e037-40a0-b6f4-dad8222f860c" &&
+      p.lanzamiento_id === "52b05826-cee4-42d8-b791-c7a3c80bb566"
+    ) {
+      summary.archivedTestPractices++;
+      archived.push({
+        practiceId: p.id,
+        reason: "CONFIRMED_TEST_PRACTICE",
+        confirmedAt: "2026-09-12",
+      });
+      continue;
+    }
     // Archive missing destinations only after effective student completion.
     // A finished practice, inactivity or a completion request is insufficient.
     // Ambiguous existing links still need review, even for finalized students.

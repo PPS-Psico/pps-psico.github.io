@@ -194,6 +194,11 @@ Reconcile es idempotente y sólo procesa la política dedicated. La elegibilidad
 incluye prácticas reales aunque el lanzamiento siga Cerrado; no convierte
 históricos ni escribe Moodle. Los triggers usan la misma regla.
 
+La práctica ficticia AYUN confirmada explícitamente por coordinación el
+12/09/2026 tiene una excepción puntual por ID de práctica y lanzamiento:
+`CONFIRMED_TEST_PRACTICE`, contada en `archivedTestPractices`. No excluye otras
+prácticas de esa cuenta ni otras prácticas de AYUN. Conserva el registro original.
+
 Desde el 12/09/2026, los destinos faltantes de estudiantes con
 `estado = Finalizado` y `fecha_finalizacion` registrada se archivan como
 `archivedCoverage` / `STUDENT_FINALIZED`. Se cuentan en
@@ -203,7 +208,7 @@ modifican ni borran prácticas, calificaciones o tareas Moodle. Una práctica
 archiva. Si el estudiante vuelve a Activo, el faltante reaparece. Decisión de
 Blas: archivar las incidencias de quienes ya finalizaron las PPS y resolver
 las de quienes siguen activos. El total en alcance se descompone en vinculadas,
-sin cobertura y archivadas por finalización.
+sin cobertura, archivadas por finalización y archivadas como prueba confirmada.
 
 El dry-run pagina todas las tablas y agrega `coverage` y `coverage_gap` a
 `attention`. Una cola vacía no equivale a cobertura completa. Audita PPS desde
