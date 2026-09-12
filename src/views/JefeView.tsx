@@ -67,23 +67,31 @@ const JefeMoodleSyncNotice: React.FC<{ sync: JefeMoodleSyncState }> = ({ sync })
 
   let icon = "sync";
   let title = "Preparando la actualización de informes";
-  let detail = "Buscando las tareas del año para tu orientación.";
+  let detail = "Priorizando las entregas en corrección y las tareas actuales de tu orientación.";
   if (sync.status === "syncing") {
     icon = "sync";
     title = "Actualizando informes desde Campus";
-    detail = `${sync.taskCount} ${sync.taskCount === 1 ? "tarea" : "tareas"} únicas del año, sin repetir relanzamientos.`;
+    detail =
+      sync.errorMessage ||
+      `${sync.currentTask ?? "Leyendo Campus"} · ${sync.pagesSaved ?? 0} páginas guardadas.`;
   } else if (sync.status === "synced") {
     icon = "cloud_done";
     title = "Informes actualizados";
-    detail = `${sync.taskCount} ${sync.taskCount === 1 ? "tarea revisada" : "tareas revisadas"}${sync.accepted > 0 ? ` · ${sync.accepted} entregas vinculadas` : ""}${sync.deduplicated > 0 ? ` · ${sync.deduplicated} asignadas a la práctica más reciente` : ""}${sync.unmatchedInternal > 0 ? " · las filas ajenas al área o sin correspondencia se aislaron sin modificar ninguna PPS" : ""}${observedLabel ? ` · ${observedLabel}` : ""}.`;
+    detail = `${sync.taskCount} tareas revisadas · ${sync.pagesSaved ?? 0} páginas guardadas${observedLabel ? ` · ${observedLabel}` : ""}.`;
   } else if (sync.status === "partial") {
     icon = "rule";
-    title = "Actualización parcial";
+    title =
+      sync.errorMessage || sync.failedTasks > 0
+        ? "Lectura pausada"
+        : "Actualizando informes desde Campus";
     const issues = [
       sync.failedTasks > 0 ? `${sync.failedTasks} tareas no se pudieron leer` : null,
       sync.ambiguous > 0 ? `${sync.ambiguous} entregas con prácticas duplicadas` : null,
     ].filter(Boolean);
-    detail = issues.join(" · ") || "Algunas filas requieren revisión.";
+    detail =
+      sync.errorMessage ||
+      issues.join(" · ") ||
+      `${sync.pagesSaved ?? 0} páginas guardadas. Quedan ${sync.pendingTasks ?? 0} tareas por revisar${sync.history ? ". Podés continuar cuando quieras." : ". La lectura continúa automáticamente; podés usar el panel mientras tanto."}`;
   } else if (sync.status === "complete") {
     icon = "task_alt";
     title = "No hay tareas Moodle para sincronizar este año";
@@ -91,7 +99,9 @@ const JefeMoodleSyncNotice: React.FC<{ sync: JefeMoodleSyncState }> = ({ sync })
   } else if (sync.status === "unavailable") {
     icon = "cloud_off";
     title = "Mostrando el último estado guardado";
-    detail = "La actualización automática se ejecuta al abrir este panel dentro del Campus.";
+    detail =
+      sync.errorMessage ||
+      "La actualización automática se ejecuta al abrir este panel dentro del Campus.";
   } else if (sync.status === "error") {
     icon = "sync_problem";
     title = "No pudimos actualizar los informes";
@@ -106,7 +116,11 @@ const JefeMoodleSyncNotice: React.FC<{ sync: JefeMoodleSyncState }> = ({ sync })
     detail = `Campus devolvió la pantalla de acceso en las ${sync.failedTasks} tareas. Volvé a entrar a Campus en otra pestaña y reintentá: no se pierde nada de lo ya guardado.`;
   }
 
-  const canRetry = sync.status === "error" || sync.status === "partial";
+  const canRetry =
+    sync.status === "error" ||
+    (sync.status === "partial" &&
+      (!!sync.errorMessage || !!sync.history || sync.failedTasks > 0)) ||
+    (sync.status === "unavailable" && !!sync.errorMessage);
   return (
     <div className={`jefe-sync-notice jefe-sync-notice--${sync.status}`} role="status">
       <span className="material-icons" aria-hidden="true">
@@ -118,9 +132,23 @@ const JefeMoodleSyncNotice: React.FC<{ sync: JefeMoodleSyncState }> = ({ sync })
       </div>
       {canRetry && (
         <button type="button" onClick={() => void sync.retry()}>
-          Reintentar
+          {sync.failedTasks > 0 || sync.status === "unavailable" ? "Reintentar" : "Continuar"}
         </button>
       )}
+      {(sync.status === "syncing" ||
+        sync.status === "loading" ||
+        (sync.status === "partial" && !sync.errorMessage)) &&
+        sync.pause && (
+          <button type="button" onClick={sync.pause}>
+            Pausar
+          </button>
+        )}
+      {(sync.status === "synced" || sync.status === "partial" || sync.status === "error") &&
+        sync.reviewHistory && (
+          <button type="button" onClick={() => void sync.reviewHistory?.()}>
+            Revisar años anteriores
+          </button>
+        )}
     </div>
   );
 };

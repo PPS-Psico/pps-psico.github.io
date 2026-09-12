@@ -156,7 +156,9 @@ no queda atado a la disponibilidad del Campus.
 - El planificador TypeScript es puro: decide `create`, `verify`, `repair_drift`
   o `needs_attention`, pero todavía no maneja el navegador.
 - El observador TypeScript arma la cola y resuelve participantes de forma
-  estricta, pero todavía no tiene scheduler/checkpoints persistentes propios.
+  estricta. La lectura docente incorpora cursores persistentes y leases por
+  tarea/área mediante el [contrato por páginas](resumable-jefe-scan.md); el
+  workboard registra su estado de despliegue.
 - No existe una tabla de feature flags v2. Los nombres del plan son propuestas,
   no controles productivos.
 - El flujo de jefatura 2026 sí está integrado: obtiene las tareas anuales de su

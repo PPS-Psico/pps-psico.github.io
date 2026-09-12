@@ -1,249 +1,218 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   isEmbeddedInMoodle,
   MoodleBridgeError,
-  requestJefeMoodleTasks,
+  requestJefeMoodlePage,
+  supportsJefeMoodlePages,
 } from "../../lib/moodleBridge";
-import { buildJefeMoodleBatches } from "./jefeMoodleBatches";
-import { hasJefeMoodleSyncProblems } from "./jefeMoodleSyncStatus";
-import { fetchJefeMoodleSyncTasks, syncJefeMoodleReports } from "./jefeService";
-import type {
-  JefeMoodleSyncState,
-  JefeMoodleSyncStatus,
-  JefeMoodleUnmatchedReason,
-  JefeMoodleUnmatchedReasons,
-} from "./types";
+import { claimJefePage, commitJefePage, failJefePage, fetchJefePageQueue } from "./jefeMoodlePages";
+import type { JefeMoodleSyncState } from "./types";
 
-const recentlyStarted = new Map<string, number>();
-const AUTO_SYNC_THROTTLE_MS = 60_000;
+// A render, query invalidation or interval never clears a failed attempt.
+const attempts = new Map<string, { next: number; stopped: boolean }>();
+const running = new Set<string>();
+const MAX_PAGES = 4;
+const RUN_BUDGET_MS = 45_000;
+const empty = {
+  status: "idle" as const,
+  taskCount: 0,
+  accepted: 0,
+  ambiguous: 0,
+  unmatched: 0,
+  unmatchedInternal: 0,
+  unmatchedReasons: {},
+  deduplicated: 0,
+  failedTasks: 0,
+  campusSessionExpired: false,
+  lastObservedAt: null,
+  errorMessage: null,
+  pagesSaved: 0,
+  pendingTasks: 0,
+  history: false,
+  currentTask: null,
+};
+type ViewState = Omit<JefeMoodleSyncState, "retry" | "pause" | "reviewHistory">;
 
 export const useJefeMoodleSync = (enabled: boolean, previewKey?: string): JefeMoodleSyncState => {
-  const queryClient = useQueryClient();
-  const startedRef = useRef(false);
-  const inFlightRef = useRef(false);
-  const [queueRefresh, setQueueRefresh] = useState(0);
-  const [syncStatus, setSyncStatus] = useState<JefeMoodleSyncStatus>("idle");
-  const [accepted, setAccepted] = useState(0);
-  const [ambiguous, setAmbiguous] = useState(0);
-  const [unmatched, setUnmatched] = useState(0);
-  const [deduplicated, setDeduplicated] = useState(0);
-  const [unmatchedExternal, setUnmatchedExternal] = useState(0);
-  const [unmatchedReasons, setUnmatchedReasons] = useState<JefeMoodleUnmatchedReasons>({});
-  const [failedTasks, setFailedTasks] = useState(0);
-  const [noAccessTasks, setNoAccessTasks] = useState(0);
-  const [lastObservedAt, setLastObservedAt] = useState<string | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const client = useQueryClient();
+  const [state, setState] = useState<ViewState>(empty);
+  const active = useRef(false);
+  const stopped = useRef(false);
+  const generation = useRef(0);
+  const historyMode = useRef(false);
+  const key = previewKey ?? "self";
 
-  const tasksQuery = useQuery({
-    queryKey: ["jefe-moodle-sync-tasks-v1", previewKey ?? "self"],
-    queryFn: () => fetchJefeMoodleSyncTasks(previewKey),
-    enabled,
-    staleTime: 10 * 60_000,
-    retry: 1,
-  });
-
-  const tasks = useMemo(() => tasksQuery.data ?? [], [tasksQuery.data]);
-  const refetchTasks = tasksQuery.refetch;
-  const signature = useMemo(
-    () =>
-      tasks.length > 0
-        ? `${previewKey ?? "self"}:${tasks[0].academic_year}:${tasks
-            .map((task) => task.cmid)
-            .sort((left, right) => left - right)
-            .join(",")}`
-        : "",
-    [previewKey, tasks]
-  );
-
-  const runSync = useCallback(async () => {
-    if (!enabled || tasksQuery.isLoading || inFlightRef.current) return;
-    if (tasks.length === 0) {
-      setSyncStatus("idle");
-      setErrorMessage(null);
-      return;
-    }
-    if (!isEmbeddedInMoodle()) {
-      setSyncStatus("unavailable");
-      setErrorMessage(null);
-      return;
-    }
-
-    inFlightRef.current = true;
-    setSyncStatus("syncing");
-    setErrorMessage(null);
-    setNoAccessTasks(0);
-    try {
-      const academicYears = new Set(tasks.map((task) => task.academic_year));
-      if (academicYears.size !== 1) throw new MoodleBridgeError("invalid_response");
-
-      const batches = buildJefeMoodleBatches(tasks.map((task) => task.cmid));
-      let acceptedTotal = 0;
-      let ambiguousTotal = 0;
-      let unmatchedTotal = 0;
-      let unmatchedExternalTotal = 0;
-      const unmatchedReasonTotals: JefeMoodleUnmatchedReasons = {};
-      let deduplicatedTotal = 0;
-      let invalidTotal = 0;
-      let failedTotal = 0;
-      let noAccessTotal = 0;
-      let successfulBatches = 0;
-      let latestObservedAt: string | null = null;
-      let lastBatchError: unknown = null;
-
-      for (const batch of batches) {
-        try {
-          const bridgeResult = await requestJefeMoodleTasks(batch);
-          const persisted = await syncJefeMoodleReports(
-            tasks[0].academic_year,
-            bridgeResult,
-            previewKey
-          );
-          successfulBatches += 1;
-          failedTotal += bridgeResult.tasks.filter(
-            (task) => task.status !== "ok" || !!task.errorCode
-          ).length;
-          // Campus contesta el login cuando la sesión de Moodle venció: el
-          // puente lo reporta como `no_access` tarea por tarea.
-          noAccessTotal += bridgeResult.tasks.filter((task) => task.status === "no_access").length;
-          acceptedTotal += persisted.accepted;
-          ambiguousTotal += persisted.ambiguous;
-          unmatchedTotal += persisted.unmatched;
-          unmatchedExternalTotal += persisted.unmatched_external ?? 0;
-          for (const [reason, count] of Object.entries(persisted.unmatched_reasons ?? {})) {
-            if (typeof count !== "number" || !Number.isFinite(count) || count <= 0) continue;
-            const typedReason = reason as JefeMoodleUnmatchedReason;
-            unmatchedReasonTotals[typedReason] = (unmatchedReasonTotals[typedReason] ?? 0) + count;
-          }
-          deduplicatedTotal += persisted.deduplicated ?? 0;
-          invalidTotal += persisted.invalid;
-          if (!latestObservedAt || persisted.observed_at > latestObservedAt) {
-            latestObservedAt = persisted.observed_at;
-          }
-        } catch (error) {
-          if (error instanceof MoodleBridgeError && error.code === "not_embedded") throw error;
-          failedTotal += batch.length;
-          lastBatchError = error;
-        }
-      }
-
-      if (successfulBatches === 0)
-        throw lastBatchError ?? new MoodleBridgeError("invalid_response");
-
-      setAccepted(acceptedTotal);
-      setAmbiguous(ambiguousTotal);
-      setUnmatched(unmatchedTotal);
-      setDeduplicated(deduplicatedTotal);
-      setUnmatchedExternal(unmatchedExternalTotal);
-      setUnmatchedReasons(unmatchedReasonTotals);
-      setFailedTasks(failedTotal);
-      setNoAccessTasks(noAccessTotal);
-      setLastObservedAt(latestObservedAt);
-
-      await queryClient.invalidateQueries({ queryKey: ["jefe-dashboard-v1"] });
-      // Una fila interna sin vínculo queda aislada y auditada, pero no vuelve
-      // parcial una sincronización cuyas tareas sí se leyeron correctamente.
-      const isPartial = hasJefeMoodleSyncProblems({
-        failedTasks: failedTotal,
-        ambiguous: ambiguousTotal,
-        invalid: invalidTotal,
-      });
-      setSyncStatus(isPartial ? "partial" : "synced");
-    } catch (error) {
-      if (error instanceof MoodleBridgeError && error.code === "not_embedded") {
-        setSyncStatus("unavailable");
-        setErrorMessage(null);
+  const run = useCallback(
+    async (manual: boolean, history: boolean) => {
+      if (!enabled || active.current || running.has(key)) return;
+      const ownGeneration = generation.current;
+      const current = () => ownGeneration === generation.current;
+      const update = (value: Partial<ViewState>) => {
+        if (current()) setState((old) => ({ ...old, ...value }));
+      };
+      if (!isEmbeddedInMoodle()) {
+        update({ status: "unavailable" });
         return;
       }
-      setSyncStatus("error");
-      setErrorMessage(
-        error instanceof MoodleBridgeError && error.code === "timeout"
-          ? "Campus tardó demasiado en responder. Podés reintentar sin perder los datos guardados."
-          : "No pudimos completar la lectura anual de Campus."
-      );
-    } finally {
-      inFlightRef.current = false;
-    }
-  }, [enabled, previewKey, queryClient, tasks, tasksQuery.isLoading]);
+      active.current = true;
+      running.add(key);
+      stopped.current = false;
+      historyMode.current = history;
+      attempts.set(key, { next: Date.now(), stopped: false });
+      update({ ...empty, status: "loading", history });
+      let saved = 0;
+      let accepted = 0;
+      let completed = 0;
+      let pending = 0;
+      try {
+        if (!(await supportsJefeMoodlePages())) {
+          attempts.set(key, { next: Date.now(), stopped: true });
+          update({
+            status: "unavailable",
+            errorMessage:
+              "El puente de Campus necesita actualizarse para leer por páginas. Conservamos los informes guardados.",
+          });
+          return;
+        }
+        const startedAt = Date.now();
+        while (
+          current() &&
+          !stopped.current &&
+          saved < MAX_PAGES &&
+          Date.now() - startedAt < RUN_BUDGET_MS
+        ) {
+          const queue = await fetchJefePageQueue(previewKey, history, manual);
+          if (!current() || stopped.current) break;
+          pending = queue.pending;
+          update({ pendingTasks: pending });
+          if (queue.tasks.length === 0) {
+            if (queue.paused > 0)
+              throw new Error(
+                "Hay tareas pausadas por errores anteriores. Reintentá cuando Campus esté disponible."
+              );
+            break;
+          }
+          const task = queue.tasks[0];
+          const claim = await claimJefePage(task.cmid, previewKey, manual);
+          if (claim.status !== "claimed") break;
+          // Once claimed, finish this page even if the view was closed or
+          // paused while claiming. Navigation is not a transport failure.
+          update({
+            status: "syncing",
+            currentTask: `${task.task_name} · página ${claim.page + 1}`,
+          });
+          let payload;
+          try {
+            payload = await requestJefeMoodlePage(claim.cmid, claim.page);
+          } catch (error) {
+            await failJefePage(claim.lease, previewKey).catch(() => undefined);
+            throw error;
+          }
+          // Finish saving the current page even after pause/unmount. If the RPC
+          // times out, leave the lease alone: its transaction may still commit.
+          const receipt = await commitJefePage(claim.lease, payload, previewKey);
+          accepted += receipt.accepted;
+          if (receipt.status !== "paused") saved += 1;
+          if (receipt.status === "complete") {
+            completed += 1;
+            pending = Math.max(0, pending - 1);
+          }
+          update({
+            accepted,
+            pagesSaved: saved,
+            taskCount: completed,
+            pendingTasks: pending,
+            lastObservedAt: receipt.observedAt,
+            campusSessionExpired: payload.task.errorCode === "campus_session_expired",
+          });
+          if (current())
+            void client
+              .invalidateQueries({ queryKey: ["jefe-dashboard-v1"] })
+              .catch(() => undefined);
+          if (receipt.status === "paused")
+            throw new Error(
+              "Campus devolvió una página incompleta. Guardamos la evidencia válida y pausamos la lectura; podés reintentar."
+            );
+        }
+        if (!current()) return;
+        const paused = stopped.current;
+        attempts.set(key, {
+          // Healthy batches continue promptly. A busy queue backs off instead
+          // of repeatedly claiming a lease owned by another tab.
+          next: Date.now() + (pending > 0 ? (saved > 0 ? 2_000 : 60_000) : 5 * 60_000),
+          stopped: paused || history,
+        });
+        update({
+          status: pending > 0 || paused ? "partial" : "synced",
+          currentTask: null,
+          errorMessage: paused ? "Lectura pausada. El avance quedó guardado." : null,
+        });
+      } catch (error) {
+        attempts.set(key, { next: Date.now(), stopped: true });
+        update({
+          status: accepted > 0 || saved > 0 ? "partial" : "error",
+          failedTasks: 1,
+          currentTask: null,
+          errorMessage:
+            error instanceof MoodleBridgeError
+              ? error.code === "timeout"
+                ? "Campus tardó demasiado. La lectura quedó pausada y el avance guardado se conserva."
+                : "La respuesta de Campus no pudo validarse. La lectura quedó pausada."
+              : error instanceof Error && error.message
+                ? error.message
+                : "No pudimos completar la lectura. El avance guardado se conserva.",
+        });
+      } finally {
+        active.current = false;
+        running.delete(key);
+      }
+    },
+    [client, enabled, key, previewKey]
+  );
 
   useEffect(() => {
-    if (!enabled || tasksQuery.isFetching || tasksQuery.isError || startedRef.current) return;
-    if (!signature) {
-      setSyncStatus("idle");
-      return;
-    }
-    if (!isEmbeddedInMoodle()) {
-      setSyncStatus("unavailable");
-      return;
-    }
-
-    const lastStartedAt = recentlyStarted.get(signature) ?? 0;
-    // A recent attempt may still be running or may have failed. Preserve this
-    // instance's result and wait out the throttle instead of reporting success
-    // or dropping a queue refresh that arrived just before the deadline.
-    const delay = Math.max(300, AUTO_SYNC_THROTTLE_MS - (Date.now() - lastStartedAt));
-    const timer = window.setTimeout(() => {
-      if (inFlightRef.current) return;
-      startedRef.current = true;
-      recentlyStarted.set(signature, Date.now());
-      void runSync();
-    }, delay);
-    return () => window.clearTimeout(timer);
-  }, [enabled, runSync, signature, tasksQuery.isError, tasksQuery.isFetching, queueRefresh]);
-
-  // Drain later slices while the authorized Campus session stays open. Coverage
-  // and retry budgets live in SQL, so reopening the panel resumes the queue.
-  useEffect(() => {
-    if (!enabled || !isEmbeddedInMoodle()) return;
-    let disposed = false;
-    const timer = window.setInterval(() => {
-      if (inFlightRef.current) return;
-      void refetchTasks().then((result) => {
-        if (disposed || !result.isSuccess) return;
-        startedRef.current = false;
-        // React Query may retain identical data and batch its fetching state.
-        // A completed refresh must still wake retries of the same task slice.
-        setQueueRefresh((value) => value + 1);
-      });
-    }, 60_000);
-    return () => {
-      disposed = true;
-      window.clearInterval(timer);
+    const ownGeneration = ++generation.current;
+    setState(
+      attempts.get(key)?.stopped
+        ? {
+            ...empty,
+            status: "partial",
+            errorMessage: "La lectura quedó pausada. Podés continuar desde el avance guardado.",
+          }
+        : empty
+    );
+    const tick = () => {
+      const attempt = attempts.get(key);
+      if (
+        enabled &&
+        !active.current &&
+        !running.has(key) &&
+        !attempt?.stopped &&
+        (!attempt || attempt.next <= Date.now())
+      )
+        void run(false, false);
     };
-  }, [enabled, refetchTasks]);
+    const initial = window.setTimeout(tick, 300);
+    const interval = window.setInterval(tick, 1_000);
+    return () => {
+      if (generation.current === ownGeneration) generation.current += 1;
+      window.clearTimeout(initial);
+      window.clearInterval(interval);
+    };
+  }, [enabled, key, run]);
 
-  const status: JefeMoodleSyncStatus = !enabled
-    ? "idle"
-    : tasksQuery.isLoading
-      ? "loading"
-      : tasksQuery.isError
-        ? "error"
-        : syncStatus;
-
-  const retry = useCallback(async () => {
-    if (tasksQuery.isError) {
-      startedRef.current = false;
-      await tasksQuery.refetch();
-      return;
-    }
-    await runSync();
-  }, [runSync, tasksQuery]);
-
-  return {
-    status,
-    taskCount: tasks.length,
-    accepted,
-    ambiguous,
-    unmatched,
-    unmatchedInternal: Math.max(0, unmatched - unmatchedExternal),
-    unmatchedReasons,
-    deduplicated,
-    failedTasks,
-    campusSessionExpired: noAccessTasks > 0 && noAccessTasks === failedTasks,
-    lastObservedAt,
-    errorMessage: tasksQuery.isError
-      ? "No pudimos obtener las tareas habilitadas para tu orientación."
-      : errorMessage,
-    retry,
-  };
+  const pause = useCallback(() => {
+    stopped.current = true;
+    attempts.set(key, { next: Date.now(), stopped: true });
+    setState((old) => ({
+      ...old,
+      errorMessage: active.current
+        ? "Guardando la página en curso antes de pausar…"
+        : "Lectura pausada. El avance quedó guardado.",
+    }));
+  }, [key]);
+  const retry = useCallback(() => run(true, historyMode.current), [run]);
+  const reviewHistory = useCallback(() => run(true, true), [run]);
+  return { ...state, retry, pause, reviewHistory };
 };
