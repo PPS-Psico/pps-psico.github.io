@@ -17,6 +17,23 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  pps-integrity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Test PPS review scripts
+        run: python -m unittest discover -s scripts/pps -p "test_*.py"
+      # Postgres efímero sin red ni credenciales de producción.
+      - name: Replay migrations and test concurrent resolutions
+        run: node scripts/replay-migrations.mjs --concurrency --contracts
+
   # --- Build Job ---
   build:
     runs-on: ubuntu-latest
@@ -80,7 +97,7 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
-    needs: build
+    needs: [build, pps-integrity]
     if: github.ref == 'refs/heads/main'
     steps:
       - name: Deploy to GitHub Pages
