@@ -17,7 +17,7 @@ import { getPenaltyScore, type PenaltyType } from "../../../constants/penalties"
 import { getErrorMessage } from "../../../utils/getErrorMessage";
 import Loader from "../../Loader";
 import { SecureStorageLink } from "../../ui/SecureStorageLink";
-import { DataItem, EmptyState } from "./primitives";
+import { DataItem, EmptyState, FilterTabs } from "./primitives";
 import { getStorageRef } from "../../../utils/attachmentUtils";
 import { supabase } from "../../../lib/supabaseClient";
 
@@ -70,8 +70,8 @@ interface CorreccionesTabViewProps {
 }
 
 const CorreccionesTabView: React.FC<CorreccionesTabViewProps> = ({
-  filter: _filter,
-  setFilter: _setFilter,
+  filter,
+  setFilter,
   expandedId,
   onToggle,
   onToast,
@@ -80,6 +80,19 @@ const CorreccionesTabView: React.FC<CorreccionesTabViewProps> = ({
   isTestingMode = false,
 }) => {
   const queryClient = useQueryClient();
+  const [localFilter, setLocalFilter] = useState("pendiente");
+  const states = [
+    { value: "pendiente", label: "Pendientes" },
+    { value: "aprobada", label: "Aprobadas" },
+    { value: "rechazada", label: "Rechazadas" },
+    { value: "archivada", label: "Archivadas" },
+  ];
+  // El contenedor comparte el filtro con otras pestañas y lo reinicia a "all".
+  // En Correcciones ese valor siempre significa la cola pendiente, nunca el histórico.
+  const requestedFilter = filter ?? localFilter;
+  const activeFilter = states.some((s) => s.value === requestedFilter)
+    ? requestedFilter
+    : "pendiente";
 
   // Fetch modificaciones
   const modQuery = useQuery<CorreccionItem[]>({
@@ -197,7 +210,10 @@ const CorreccionesTabView: React.FC<CorreccionesTabViewProps> = ({
     isPending: modQuery.isPending || nuevasQuery.isPending,
     isError: modQuery.isError || nuevasQuery.isError,
     error: modQuery.error ?? nuevasQuery.error,
-    data: modQuery.isPending || nuevasQuery.isPending ? undefined : allList,
+    data:
+      modQuery.isPending || nuevasQuery.isPending
+        ? undefined
+        : allList.filter((s) => s.estado === activeFilter),
     refetch: () => {
       void modQuery.refetch();
       void nuevasQuery.refetch();
@@ -206,6 +222,16 @@ const CorreccionesTabView: React.FC<CorreccionesTabViewProps> = ({
 
   return (
     <div>
+      <div style={{ marginBottom: 16 }}>
+        <FilterTabs
+          options={states.map((state) => ({
+            ...state,
+            count: allList.filter((s) => s.estado === state.value).length,
+          }))}
+          value={activeFilter}
+          onChange={setFilter ?? setLocalFilter}
+        />
+      </div>
       <QueryState
         query={listaQuery}
         loading={
@@ -218,8 +244,14 @@ const CorreccionesTabView: React.FC<CorreccionesTabViewProps> = ({
           lista.length === 0 ? (
             <EmptyState
               icon="inbox"
-              title="Sin solicitudes"
-              msg="No hay solicitudes de modificaciones ni de cargas de PPS."
+              title={
+                activeFilter === "pendiente" ? "Sin solicitudes pendientes" : "Sin solicitudes"
+              }
+              msg={
+                activeFilter === "pendiente"
+                  ? "Las solicitudes resueltas se conservan en sus listas correspondientes."
+                  : "No hay solicitudes en esta lista."
+              }
             />
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
