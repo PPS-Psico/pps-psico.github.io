@@ -108,7 +108,7 @@ describe("getEnrollmentEligibility", () => {
     });
     const megaConvocatoria = makeLanzamiento({
       id: "mega-2026",
-      institucion_id: "inst-ministerio",
+      institucion_uuid: "inst-ministerio",
       nombre_pps: "Programa de Promoción del Empleo 2026",
       orientacion: "Laboral, Educacional",
     });

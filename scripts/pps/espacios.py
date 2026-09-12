@@ -53,6 +53,10 @@ if hasattr(sys.stdout, "reconfigure"):
 
 REPO = Path(__file__).resolve().parents[2]
 
+# Tope de filas por respuesta que impone PostgREST (max-rows). Pedir mas no sirve:
+# recorta en silencio.
+PAGINA = 1000
+
 # Estados que sacan a una solicitud del tablero: ya se resolvio, para bien o para mal.
 ESTADOS_CERRADOS = ["Realizada", "No se pudo concretar", "Archivado"]
 
@@ -117,7 +121,48 @@ class Panel:
             return json.loads(crudo) if crudo.strip() else []
 
     def get(self, path: str) -> list[dict]:
-        return self._req("GET", path)
+        """Lee todas las filas, paginando cuando hace falta.
+
+        PostgREST corta cada respuesta en `max-rows` (1000) aunque se pida mas, y
+        no avisa: `limit=5000` devuelve 1000 y quien llama sigue como si eso fuera
+        la tabla entera. Si la primera pagina vuelve llena, hay que ir por el resto.
+        """
+        primera = self._req("GET", path)
+        if len(primera) < PAGINA:
+            return primera
+        return self._leer_paginado(path)
+
+    def _leer_paginado(self, path: str) -> list[dict]:
+        """Relee desde cero con orden estable, respetando limit y offset.
+
+        Paginar por offset necesita un orden total. No alcanza con que haya un
+        `order`: si empata, el corte entre paginas queda librado al azar y una
+        fila puede repetirse o perderse. En `whatsapp_mensajes` hay timestamps
+        repetidos, asi que se agrega `id` como desempate salvo que ya ordene por
+        el. El `offset` de quien llama es el punto de partida, no se pisa.
+        """
+        base, _, query = path.partition("?")
+        crudos = urllib.parse.parse_qsl(query, keep_blank_values=True)
+        tope = next((int(v) for k, v in crudos if k == "limit"), None)
+        desde = next((int(v) for k, v in crudos if k == "offset"), 0)
+        params = [(k, v) for k, v in crudos if k not in ("limit", "offset")]
+
+        orden = next((v for k, v in params if k == "order"), "")
+        if "id" not in [c.split(".")[0] for c in orden.split(",") if c]:
+            params = [(k, v) for k, v in params if k != "order"]
+            params.append(("order", f"{orden},id" if orden else "id"))
+
+        filas: list[dict] = []
+        while True:
+            pedido = PAGINA if tope is None else min(PAGINA, tope - len(filas))
+            if pedido <= 0:
+                return filas
+            consulta = urllib.parse.urlencode(
+                params + [("limit", pedido), ("offset", desde + len(filas))])
+            lote = self._req("GET", f"{base}?{consulta}")
+            filas += lote
+            if len(lote) < pedido:
+                return filas
 
     def patch(self, path: str, cuerpo: dict) -> list[dict]:
         return self._req("PATCH", path, cuerpo)

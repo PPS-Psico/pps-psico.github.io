@@ -1,6 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { readFile, readdir, writeFile } from "node:fs/promises";
+import { readFile, readdir, writeFile, mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { basename, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -20,6 +21,9 @@ const image = process.env.MIGRATION_REPLAY_IMAGE ?? "public.ecr.aws/supabase/pos
 const containerName = `consulta-pps-migration-replay-${process.pid}-${randomUUID().slice(0, 8)}`;
 const filenamePattern = /^(\d{14})_([a-z0-9][a-z0-9_]*)\.sql$/;
 const runContracts = process.argv.includes("--contracts");
+const runConcurrency = process.argv.includes("--concurrency");
+const localPassword = randomUUID();
+let pythonDepsDir = null;
 const inventoryArg = process.argv.indexOf("--inventory-out");
 const inventoryOutput = inventoryArg === -1 ? null : process.argv[inventoryArg + 1];
 if (inventoryArg !== -1 && !inventoryOutput) {
@@ -95,10 +99,42 @@ function psql(sql, context, { tuplesOnly = false } = {}) {
 }
 
 async function replaySql(entry) {
-  const sql = await readFile(entry.path, "utf8");
+  let sql = await readFile(entry.path, "utf8");
   if (entry.kind !== "migration") return sql;
+  // pg_get_functiondef exports in these historical files omitted the final
+  // statement delimiter. Repair only standalone closing tags after END.
+  if (
+    [
+      "20260825122000",
+      "20260825130000",
+      "20260825140000",
+      "20260902120000",
+      "20260902230000",
+      "20260902233000",
+    ].includes(entry.version)
+  ) {
+    sql = sql.replace(/(end;\r?\n\$function\$)(?=\r?\n)/gi, "$1;");
+  }
 
-  if (entry.version === "20260717211849" || entry.version === "20260717225419") {
+  if (
+    entry.version === "20260717211849" ||
+    entry.version === "20260717225419" ||
+    // Data-only merge requiring two real institutional records; no schema changes.
+    entry.version === "20260819152557" ||
+    // Individual historical link requires a production student and Moodle task.
+    entry.version === "20260831205748" ||
+    // Historical grade corrections assert specific production rows/counts.
+    [
+      "20260821210000",
+      "20260821240000",
+      "20260824200000",
+      "20260824230000",
+      "20260824240000",
+      "20260824250000",
+      "20260825150000",
+      "20260825160000",
+    ].includes(entry.version)
+  ) {
     return "-- Schema-only replay: product-data reconciliation intentionally skipped.\n";
   }
 
@@ -121,20 +157,31 @@ async function replaySql(entry) {
       commit;`;
   }
 
+  if (entry.version === "20260821020000") {
+    // The preceding canonical patch already changed these literals to stealth.
+    // Adapt only the two search anchors; retain the final per-mode visibility.
+    const anchor = "|| v_unit.orientacion_key, ''visible'',";
+    if (sql.split(anchor).length !== 3)
+      throw new Error("Cambió el parche histórico de visibilidad.");
+    return sql.replaceAll(anchor, "|| v_unit.orientacion_key, ''stealth'',");
+  }
+
   return sql;
 }
 
-async function applyFile(entry) {
-  const sql = await replaySql(entry);
-  psql(sql, `Falló ${entry.kind} ${entry.file}`);
-
-  if (entry.kind === "migration") {
-    psql(
-      `insert into supabase_migrations.schema_migrations (version, statements, name)\n` +
-        `values ('${entry.version}', array[]::text[], '${entry.name}');`,
-      `No se pudo registrar ${entry.file}`
-    );
+async function applyBatch(entries) {
+  const statements = [];
+  for (const entry of entries) {
+    statements.push(`\\echo Aplicando ${entry.kind} ${entry.file}\n`);
+    statements.push(await replaySql(entry));
+    if (entry.kind === "migration") {
+      statements.push(
+        `insert into supabase_migrations.schema_migrations (version, statements, name)
+         values ('${entry.version}', array[]::text[], '${entry.name}');`
+      );
+    }
   }
+  psql(statements.join("\n"), "Falló un lote de migraciones (último archivo indicado abajo)");
 }
 
 function waitForPostgres() {
@@ -177,6 +224,33 @@ async function main() {
     `Replay aislado: ${migrations.length} migraciones, ${overlays.length} overlays, PostgreSQL 17.6.`
   );
 
+  if (runConcurrency) {
+    pythonDepsDir = await mkdtemp(resolve(tmpdir(), "pps-concurrency-python-"));
+    requireSuccess(
+      spawnSync(
+        process.env.PYTHON ?? "python",
+        [
+          "-m",
+          "pip",
+          "install",
+          "--quiet",
+          "--disable-pip-version-check",
+          "--target",
+          pythonDepsDir,
+          "--only-binary=:all:",
+          "--platform",
+          "manylinux2014_x86_64",
+          "--python-version",
+          "3.12",
+          "psycopg[binary]==3.3.4",
+          "typing_extensions==4.15.0",
+        ],
+        { encoding: "utf8", timeout: 120000 }
+      ),
+      "No se pudieron preparar las dependencias Python"
+    );
+  }
+
   requireSuccess(
     docker([
       "run",
@@ -188,11 +262,13 @@ async function main() {
       "--network",
       "none",
       "--env",
-      "POSTGRES_PASSWORD=replay-local-only",
+      `POSTGRES_PASSWORD=${localPassword}`,
       "--env",
       "POSTGRES_DB=postgres",
       image,
       "postgres",
+      "-c",
+      "listen_addresses=localhost",
       "-c",
       "shared_preload_libraries=pg_stat_statements,pg_cron,pg_net",
       "-c",
@@ -218,16 +294,11 @@ async function main() {
   );
 
   let applied = 0;
-  for (const entry of timeline) {
-    await applyFile(entry);
-    if (entry.kind === "migration") {
-      applied += 1;
-      if (applied % 10 === 0 || applied === migrations.length) {
-        console.log(`  ${applied}/${migrations.length} migraciones aplicadas`);
-      }
-    } else {
-      console.log(`  overlay local ${entry.version} aplicado`);
-    }
+  for (let offset = 0; offset < timeline.length; offset += 20) {
+    const batch = timeline.slice(offset, offset + 20);
+    await applyBatch(batch);
+    applied += batch.filter((entry) => entry.kind === "migration").length;
+    console.log(`  ${applied}/${migrations.length} migraciones aplicadas`);
   }
 
   const summary = psql(
@@ -296,6 +367,44 @@ async function main() {
     }
   }
 
+  if (runConcurrency) {
+    const adminId = randomUUID();
+    psql(
+      `insert into auth.users (id) values ('${adminId}');
+       insert into public.estudiantes (legajo, nombre, role, estado, user_id)
+       values ('REPLAY-CONCURRENCY', '[REPLAY] Concurrency admin', 'SuperUser', 'Inactivo', '${adminId}');`,
+      "No se pudo crear el administrador sintético"
+    );
+    requireSuccess(
+      docker(["cp", pythonDepsDir, `${containerName}:/tmp/pps-python`]),
+      "No se pudieron copiar las dependencias"
+    );
+    requireSuccess(
+      docker([
+        "cp",
+        resolve(rootDir, "scripts/pps/concurrencia_resoluciones.py"),
+        `${containerName}:/tmp/concurrencia_resoluciones.py`,
+      ]),
+      "No se pudo copiar el arnés"
+    );
+    const result = docker(
+      [
+        "exec",
+        "--env",
+        "PYTHONPATH=/tmp/pps-python",
+        "--env",
+        "SUPABASE_DB_URL=postgresql://supabase_admin@/postgres?host=/run/postgresql",
+        containerName,
+        "python3",
+        "/tmp/concurrencia_resoluciones.py",
+        "--confirmo-entorno-de-prueba",
+      ],
+      { timeout: 180000 }
+    );
+    console.log(result.stdout ?? "");
+    requireSuccess(result, "Falló el arnés de concurrencia local");
+  }
+
   console.log(`Replay completo: ${summary}`);
 }
 
@@ -313,6 +422,7 @@ try {
     exitCode = 1;
     console.error(redact(`No se pudo eliminar ${containerName}: ${cleanup.stderr}`));
   }
+  if (pythonDepsDir) await rm(pythonDepsDir, { recursive: true, force: true });
 }
 
 process.exitCode = exitCode;

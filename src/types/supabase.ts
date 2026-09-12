@@ -3543,6 +3543,7 @@ export type Database = {
       aprobar_solicitud_modificacion_pps: {
         Args: {
           p_horas_aprobadas?: number
+          p_horas_vistas?: number
           p_notas?: string
           p_solicitud_id: string
         }

@@ -4,6 +4,7 @@ import { db } from "../../lib/db";
 import {
   FIELD_NOMBRE_INSTITUCIONES,
   FIELD_TELEFONO_INSTITUCIONES,
+  FIELD_INSTITUCION_LINK_LANZAMIENTOS,
   FIELD_NOMBRE_PPS_LANZAMIENTOS,
   FIELD_ORIENTACION_LANZAMIENTOS,
   FIELD_FECHA_FIN_LANZAMIENTOS,
@@ -34,7 +35,7 @@ const fetchReportData = async (isTestingMode: boolean) => {
         FIELD_NOMBRE_PPS_LANZAMIENTOS,
         FIELD_ORIENTACION_LANZAMIENTOS,
         FIELD_FECHA_FIN_LANZAMIENTOS,
-        "institucion_id",
+        FIELD_INSTITUCION_LINK_LANZAMIENTOS,
       ],
     }),
   ]);
@@ -78,7 +79,7 @@ const GestionRelanzamientoReport: React.FC<{ isTestingMode?: boolean }> = ({
       const groupName = ppsName.split(/\s*[-–—]\s*/)[0].trim();
 
       // Buscar el teléfono de la institución
-      const institucionId = launch.institucion_id;
+      const institucionId = launch[FIELD_INSTITUCION_LINK_LANZAMIENTOS];
       let telefono = "";
 
       if (institucionId) {

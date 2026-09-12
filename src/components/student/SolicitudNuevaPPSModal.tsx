@@ -18,7 +18,7 @@ import { getErrorMessage } from "../../utils/getErrorMessage";
 /** Proyección parcial de lanzamiento usada por el modal (datos del select + extras opcionales). */
 interface LanzamientoLite {
   id: string;
-  institucion_id: string | null;
+  institucion_uuid: string | null;
   cupos_disponibles?: number | null;
   created_at?: string;
   [key: string]: unknown;
@@ -56,7 +56,12 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
   const [orientacion, setOrientacion] = useState<string>("");
   const [fechaInicio, setFechaInicio] = useState<string>("");
   const [fechaFinalizacion, setFechaFinalizacion] = useState<string>("");
-  const [horasEstimadas, setHorasEstimadas] = useState<string>("80");
+  /*
+    Arranca vacio a proposito: el valor lo pone la convocatoria al elegir la
+    institucion. Un 80 fijo se leia como el numero correcto y era solo un
+    default.
+  */
+  const [horasEstimadas, setHorasEstimadas] = useState<string>("");
   const [esOnline, setEsOnline] = useState(false);
   const [planillaFile, setPlanillaFile] = useState<File | null>(null);
   const [informeFile, setInformeFile] = useState<File | null>(null);
@@ -69,6 +74,8 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
   const [searchTerm, setSearchTerm] = useState("");
   const [showResults, setShowResults] = useState(false);
   const lastAutocompletedInstId = useRef<string | null>(null);
+  // Una vez que el estudiante escribe una cantidad, el autocompletado no la pisa.
+  const horasEditadasPorElEstudiante = useRef(false);
 
   // Fetch instituciones y lanzamientos
   const { data: instituciones = [] } = useQuery({
@@ -85,14 +92,14 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
     enabled: isOpen,
   });
 
-  const { data: lanzamientos = [] } = useQuery<LanzamientoLite[]>({
+  const { data: lanzamientos = [], isPending: lanzamientosCargando } = useQuery<LanzamientoLite[]>({
     queryKey: ["lanzamientos_pps"],
     queryFn: async () => {
       const data = await runQuery(
         supabase
           .from("lanzamientos_pps")
           .select(
-            "id, institucion_id, cupos_disponibles, horas_acreditadas, orientacion, es_online, created_at"
+            "id, institucion_uuid, cupos_disponibles, horas_acreditadas, orientacion, created_at"
           )
           .order("created_at", { ascending: false }),
         { table: "lanzamientos_pps", operation: "lanzamientosParaSolicitud" }
@@ -102,13 +109,13 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
     enabled: isOpen,
   });
 
-  // Agrupar lanzamientos por institucion_id para filtrar por cupos
+  // Agrupar lanzamientos por institución para filtrar por cupos
   const lanzamientosPorInstitucion = useMemo(() => {
     const map = new Map<string, LanzamientoLite[]>();
     for (const l of lanzamientos) {
-      const existing = map.get(l.institucion_id || "") || [];
+      const existing = map.get(l.institucion_uuid || "") || [];
       existing.push(l);
-      map.set(l.institucion_id || "", existing);
+      map.set(l.institucion_uuid || "", existing);
     }
     return map;
   }, [lanzamientos]);
@@ -129,20 +136,22 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
   // Filtrar lanzamientos que coincidan con la institución seleccionada
   const lanzamientosDeInstitucion = useMemo(() => {
     if (!institucionSeleccionada) return [];
-    return lanzamientos.filter((l) => l.institucion_id === institucionSeleccionada.id);
+    return lanzamientos.filter((l) => l.institucion_uuid === institucionSeleccionada.id);
   }, [lanzamientos, institucionSeleccionada]);
 
-  const maxHorasPermitidas = useMemo(() => {
-    if (lanzamientosDeInstitucion.length > 0) {
-      const sortedLanzamientos = [...lanzamientosDeInstitucion].sort(
-        (a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
-      );
-      const ultimoLanzamiento = sortedLanzamientos[0];
-      if (ultimoLanzamiento[FIELD_HORAS_ACREDITADAS_LANZAMIENTOS]) {
-        return Number(ultimoLanzamiento[FIELD_HORAS_ACREDITADAS_LANZAMIENTOS]) || 80;
-      }
-    }
-    return 80;
+  /*
+    Lo que acredita la convocatoria es una sugerencia, no un tope: el pedido
+    puede venir consensuado por correo y a veces corresponde mas. Cuanto se
+    acredita finalmente lo define coordinacion al aprobar la solicitud.
+    Es null cuando no se conoce la convocatoria, para no afirmar un numero.
+  */
+  const horasDeLaConvocatoria = useMemo<number | null>(() => {
+    if (lanzamientosDeInstitucion.length === 0) return null;
+    const sortedLanzamientos = [...lanzamientosDeInstitucion].sort(
+      (a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
+    );
+    const horas = Number(sortedLanzamientos[0][FIELD_HORAS_ACREDITADAS_LANZAMIENTOS]);
+    return Number.isFinite(horas) && horas > 0 ? horas : null;
   }, [lanzamientosDeInstitucion]);
 
   // Auto-completar datos cuando se selecciona institución del listado
@@ -151,6 +160,14 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
       lastAutocompletedInstId.current = null;
       return;
     }
+
+    /*
+      Esperar a que lleguen los lanzamientos. Antes se marcaba la institucion
+      como procesada enseguida: si el alumno la elegia con la consulta todavia
+      en vuelo, al llegar los datos el efecto salia por el return de arriba y el
+      autocompletado se perdia para siempre.
+    */
+    if (lanzamientosCargando) return;
 
     if (lastAutocompletedInstId.current === institucionSeleccionada.id) return;
     lastAutocompletedInstId.current = institucionSeleccionada.id;
@@ -177,18 +194,17 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
         }
       }
 
-      // Autocompletar horas
-      if (ultimoLanzamiento[FIELD_HORAS_ACREDITADAS_LANZAMIENTOS]) {
-        setHorasEstimadas(String(ultimoLanzamiento[FIELD_HORAS_ACREDITADAS_LANZAMIENTOS]));
+      // Autocompletar horas, sin pisar lo que el estudiante haya escrito.
+      if (horasDeLaConvocatoria !== null && !horasEditadasPorElEstudiante.current) {
+        setHorasEstimadas(String(horasDeLaConvocatoria));
       }
 
-      // Verificar si es online (Inteligente)
-      const modalidad =
-        (ultimoLanzamiento as Record<string, unknown>).modalidad_online === "Online" ||
-        (ultimoLanzamiento as Record<string, unknown>).modalidad_online === true ||
-        (ultimoLanzamiento as Record<string, unknown>).modalidad === "Online" ||
-        (ultimoLanzamiento as Record<string, unknown>).es_online === true;
-      setEsOnline(modalidad);
+      /*
+        No se autocompleta la modalidad: el lanzamiento no la guarda. Este bloque
+        miraba modalidad_online, modalidad y es_online, y ninguna de las tres
+        existe en lanzamientos_pps, asi que siempre daba false y pisaba lo que
+        hubiera marcado el estudiante. La elige el estudiante.
+      */
     }
 
     // Si no se pudo obtener orientación del lanzamiento, intentar desde los metadatos de la institución
@@ -198,14 +214,21 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
         setOrientacion(found);
       }
     }
-  }, [institucionSeleccionada, lanzamientosDeInstitucion, isOpen]);
+  }, [
+    institucionSeleccionada,
+    lanzamientosDeInstitucion,
+    isOpen,
+    lanzamientosCargando,
+    horasDeLaConvocatoria,
+  ]);
 
   const resetForm = () => {
     setNombreInstitucionManual("");
     setOrientacion("");
     setFechaInicio("");
     setFechaFinalizacion("");
-    setHorasEstimadas("80");
+    setHorasEstimadas("");
+    horasEditadasPorElEstudiante.current = false;
     setEsOnline(false);
     setPlanillaFile(null);
     setInformeFile(null);
@@ -283,10 +306,6 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
     }
     if (!horasEstimadas || parseInt(horasEstimadas) <= 0) {
       showToast("Ingresá las horas estimadas", "error");
-      return false;
-    }
-    if (parseInt(horasEstimadas) > maxHorasPermitidas) {
-      showToast(`El máximo permitido es ${maxHorasPermitidas} horas`, "error");
       return false;
     }
     // Si es online, solo informe es obligatorio
@@ -649,15 +668,19 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
               <input
                 type="number"
                 value={horasEstimadas}
-                onChange={(e) => setHorasEstimadas(e.target.value)}
+                onChange={(e) => {
+                  horasEditadasPorElEstudiante.current = true;
+                  setHorasEstimadas(e.target.value);
+                }}
                 placeholder="Ej: 80"
                 min="1"
-                max={maxHorasPermitidas}
                 className="w-full px-4 py-3 rounded-xl outline-none focus:ring-2 transition"
                 style={fieldStyle}
               />
               <p className="text-xs mt-1" style={{ color: "var(--ink-subtle)" }}>
-                Máximo {maxHorasPermitidas} horas
+                {horasDeLaConvocatoria !== null
+                  ? `De referencia: la última convocatoria de esta institución acreditó ${horasDeLaConvocatoria} horas. Si la tuya fue distinta, cambiá el número; la coordinación define cuántas se acreditan.`
+                  : "La coordinación define cuántas horas se acreditan al aprobar la solicitud."}
               </p>
             </div>
 

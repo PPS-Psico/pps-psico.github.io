@@ -123,18 +123,45 @@ const CorreccionesTabView: React.FC<CorreccionesTabViewProps> = ({
   }, [solicitudesModificacion, solicitudesNuevas, onUpdateCounts]);
 
   const approveModMutation = useMutation({
-    mutationFn: ({ id, notas }: { id: string; notas?: string }) =>
-      approveSolicitudModificacion(id, notas),
+    mutationFn: ({
+      id,
+      notas,
+      horas,
+      horasVistas,
+    }: {
+      id: string;
+      notas?: string;
+      horas?: number;
+      horasVistas?: number | null;
+    }) =>
+      approveSolicitudModificacion({
+        solicitudId: id,
+        horasAprobadas: horas,
+        notasAdmin: notas,
+        horasVistas,
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["solicitudes_modificacion"] });
+      queryClient.invalidateQueries({ queryKey: ["practicas"] });
       onToast("Solicitud de modificación aprobada.");
     },
-    onError: (e) => onToast(getErrorMessage(e, "Error al aprobar"), "error"),
+    onError: (e) => {
+      /*
+        45001: la práctica cambió desde que se abrió la pantalla. Se refresca la
+        lista para que el coordinador vea el valor nuevo; si después de mirarlo
+        vuelve a aprobar, el pedido viaja con el valor fresco y se aplica.
+      */
+      if ((e as { code?: string })?.code === "45001") {
+        queryClient.invalidateQueries({ queryKey: ["solicitudes_modificacion"] });
+        queryClient.invalidateQueries({ queryKey: ["practicas"] });
+      }
+      onToast(getErrorMessage(e, "Error al aprobar"), "error");
+    },
   });
 
   const approveNuevaMutation = useMutation({
-    mutationFn: ({ id, notas }: { id: string; notas?: string }) =>
-      approveSolicitudNuevaPPS(id, notas),
+    mutationFn: ({ id, notas, horas }: { id: string; notas?: string; horas?: number }) =>
+      approveSolicitudNuevaPPS({ solicitudId: id, horasAprobadas: horas, notasAdmin: notas }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["solicitudes_nueva_pps"] });
       queryClient.invalidateQueries({ queryKey: ["practicas"] });
@@ -205,11 +232,21 @@ const CorreccionesTabView: React.FC<CorreccionesTabViewProps> = ({
                   onToast={onToast}
                   onReject={onReject}
                   onResolveBaja={(input) => resolveBajaMutation.mutateAsync(input)}
-                  onApprove={async (id, notas) => {
+                  /*
+                    mutateAsync y no mutate: el botón se rehabilita cuando esta
+                    promesa resuelve, y mutate devuelve void, así que volvía a
+                    quedar clickeable mientras la aprobación seguía en curso.
+                  */
+                  onApprove={async (id, notas, horas) => {
                     if (sol.tipo_solicitud === "modificacion") {
-                      approveModMutation.mutate({ id, notas });
+                      await approveModMutation.mutateAsync({
+                        id,
+                        notas,
+                        horas,
+                        horasVistas: sol.practica?.horas_realizadas ?? null,
+                      });
                     } else {
-                      approveNuevaMutation.mutate({ id, notas });
+                      await approveNuevaMutation.mutateAsync({ id, notas, horas });
                     }
                   }}
                 />
@@ -229,7 +266,7 @@ interface CorreccionCardItemProps {
   onToggle: () => void;
   onToast: (msg: string) => void;
   onReject: (sol: CorreccionItem) => void;
-  onApprove: (id: string, notas?: string) => Promise<void>;
+  onApprove: (id: string, notas?: string, horas?: number) => Promise<void>;
   onResolveBaja: (input: ResolveSolicitudBajaInput) => Promise<unknown>;
 }
 
@@ -245,6 +282,15 @@ const CorreccionCardItem: React.FC<CorreccionCardItemProps> = ({
   const isMod = sol.tipo_solicitud === "modificacion";
   const isWithdrawal = isMod && sol.tipo_modificacion === "eliminacion";
   const [adminNotes, setAdminNotes] = useState(sol.notas_admin || "");
+  /*
+    Lo que pide el estudiante es un dato, no la decisión. A veces el pedido ya
+    viene consensuado y a veces intenta acreditar más de lo que da el espacio,
+    así que coordinación confirma el número al aprobar.
+  */
+  const decideHoras = isMod ? sol.tipo_modificacion === "horas" : true;
+  const horasPedidas = isMod ? sol.horas_nuevas : sol.horas_estimadas;
+  const [horasAprobadas, setHorasAprobadas] = useState(String(horasPedidas ?? ""));
+  const horasValidas = !decideHoras || Number(horasAprobadas) > 0;
   const [loading, setLoading] = useState(false);
   const penaltySuggestion = useMemo(
     () =>
@@ -270,7 +316,9 @@ const CorreccionCardItem: React.FC<CorreccionCardItemProps> = ({
   const handleApprove = async () => {
     setLoading(true);
     try {
-      await onApprove(sol.id, adminNotes);
+      await onApprove(sol.id, adminNotes, decideHoras ? Number(horasAprobadas) : undefined);
+    } catch {
+      // El toast de error ya lo emite el onError de la mutación.
     } finally {
       setLoading(false);
     }
@@ -765,6 +813,32 @@ const CorreccionCardItem: React.FC<CorreccionCardItemProps> = ({
                 />
               </div>
 
+              {decideHoras && (
+                <div>
+                  <label
+                    className="label"
+                    htmlFor={`horas-acreditar-${sol.id}`}
+                    style={{ display: "block", marginBottom: 6, fontSize: 9.5 }}
+                  >
+                    Horas a acreditar
+                  </label>
+                  <input
+                    id={`horas-acreditar-${sol.id}`}
+                    type="number"
+                    min={1}
+                    value={horasAprobadas}
+                    onChange={(e) => setHorasAprobadas(e.target.value)}
+                    className="field"
+                    style={{ fontSize: 13 }}
+                  />
+                  <div style={{ fontSize: 11.5, color: "var(--ink-3)", marginTop: 4 }}>
+                    {horasPedidas != null
+                      ? `El estudiante pidió ${horasPedidas} hs. Se acredita lo que indiques acá.`
+                      : "Se acredita lo que indiques acá."}
+                  </div>
+                </div>
+              )}
+
               {isWithdrawal ? (
                 <>
                   <div>
@@ -873,13 +947,13 @@ const CorreccionCardItem: React.FC<CorreccionCardItemProps> = ({
                   </button>
                   <button
                     onClick={handleApprove}
-                    disabled={loading}
+                    disabled={loading || !horasValidas}
                     className="btn btn-sm press"
                     style={{
                       background: "var(--ok)",
                       color: "var(--paper)",
                       borderColor: "var(--ok)",
-                      opacity: loading ? 0.5 : 1,
+                      opacity: loading || !horasValidas ? 0.5 : 1,
                     }}
                   >
                     <span className="material-icons" style={{ fontSize: 15 }}>

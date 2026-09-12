@@ -28,7 +28,7 @@ import {
   FIELD_ORIENTACION_LANZAMIENTOS,
   FIELD_TELEFONO_ESTUDIANTES,
   FIELD_TELEFONO_INSTITUCIONES,
-  FIELD_INSTITUCION_LINK_PRACTICAS,
+  FIELD_INSTITUCION_LINK_LANZAMIENTOS,
   FIELD_SEGURO_GESTIONADO_AT_LANZAMIENTOS,
 } from "../../constants";
 import { db } from "../../lib/db";
@@ -502,7 +502,7 @@ const SeguroGenerator: React.FC<SeguroGeneratorProps> = ({
             "N/A";
 
           // Get telefono de la institución
-          const institucionId = ppsData?.[FIELD_INSTITUCION_LINK_PRACTICAS];
+          const institucionId = ppsData?.[FIELD_INSTITUCION_LINK_LANZAMIENTOS];
           const institucionTelefono = institucionId
             ? institucionTelefonos[institucionId] || ""
             : "";
