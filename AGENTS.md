@@ -217,6 +217,44 @@ Pipeline visible en el sidebar/pipeline del Lanzador (definido en `src/services/
 - El planner TypeScript no es el worker de navegador. No declarar creación automática operativa hasta probar el agente real en dry-run y piloto.
 - Contratos y estado: `docs/moodle-v2/contracts.md`, `docs/moodle-v2/workboard.md` y `docs/moodle-task-automation-runbook.md`.
 
+### Resolucion de solicitudes de PPS (INVARIANTES)
+
+Aprobar o rechazar una solicitud toca el legajo academico y de ahi pasa al SAC y
+a la titulacion. Estas reglas estan sostenidas por la base, no por convencion:
+si algo "no deja escribir", es a proposito.
+
+- **La resolucion se escribe SOLO por RPC.** `authenticated` no tiene `UPDATE`
+  sobre `solicitudes_nueva_pps` ni `solicitudes_modificacion_pps`. Las cinco RPC
+  (`aprobar_/rechazar_solicitud_nueva_pps`, `aprobar_/rechazar_solicitud_modificacion_pps`,
+  `resolver_solicitud_baja_pps_v1`) son `security definer` con `is_admin()` como
+  unica puerta y `search_path` fijado. No devolver ese `UPDATE` para "arreglar"
+  un error: romperia el candado entero.
+- **Una solicitud nace pendiente y sin datos de resolucion.** Un trigger rechaza
+  el `INSERT` que traiga `estado` distinto de `pendiente`, `horas_aprobadas`,
+  `practica_id`, `resuelta_at/por` o `comentario_rechazo`.
+- **Horas pedidas, referencia y horas aprobadas son tres cosas distintas.**
+  `horas_estimadas`/`horas_nuevas` es lo que pide el estudiante;
+  `horas_acreditadas` del lanzamiento es la referencia; `horas_aprobadas` es lo
+  que decide coordinacion al aprobar, y puede diferir de las dos.
+- **La aprobacion es atomica e idempotente.** `solicitudes_nueva_pps.practica_id`
+  tiene indice unico: una solicitud no puede haber creado dos practicas. Un
+  reintento identico devuelve la misma; uno con otra decision informa conflicto
+  (`P0001`) en vez de confirmar algo que no se aplico.
+- **`p_horas_vistas` detecta la pantalla vieja.** Si la practica cambio desde que
+  se abrio la solicitud, la RPC responde `45001` con el valor actual. Es
+  opcional por compatibilidad con clientes viejos; al aprobar desde codigo nuevo,
+  mandarlo siempre.
+
+### Institucion de un lanzamiento: usar `institucion_uuid`
+
+`lanzamientos_pps.institucion_uuid` es la referencia real, con FK a
+`instituciones`. `institucion_id` (text, sin FK) es la columna legacy que se esta
+retirando: existe todavia y un trigger las mantiene sincronizadas en ambos
+sentidos, con un CHECK que impide que discrepen. **Nada nuevo debe leerla ni
+escribirla.** En el frontend se accede por
+`FIELD_INSTITUCION_LINK_LANZAMIENTOS`. Retirar la columna vieja requiere antes
+confirmar que no queden clientes con el bundle anterior.
+
 ## Errores conocidos y soluciones
 
 | Problema                                  | Solucion                                                                                |
