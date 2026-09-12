@@ -85,6 +85,7 @@ const SolicitudesManager: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMo
   // States
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
+  const [correccionesCount, setCorreccionesCount] = useState(0);
   const [expandedId, setExpandedId] = useState<string | null>(() => {
     // Deep-link desde el Inicio: ?focus=<id> abre y resalta esa solicitud.
     try {
@@ -483,9 +484,9 @@ const SolicitudesManager: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMo
       ).length,
       egreso: solicitudesEgreso.filter((s) => s.estado !== "Cargado" && s.estado !== "Finalizada")
         .length,
-      correcciones: 0, // calculated below in subcomponent or query
+      correcciones: correccionesCount,
     };
-  }, [solicitudesIngreso, solicitudesEgreso]);
+  }, [solicitudesIngreso, solicitudesEgreso, correccionesCount]);
 
   const handleOpenEmailReview = (req: SolicitudPPSWithStudent) => {
     const institutionName = getInstitutionNameFromRequest(req);
@@ -685,9 +686,7 @@ UFLO Universidad`,
           onToast={showToast}
           onReject={setRejecting}
           isTestingMode={isTestingMode}
-          onUpdateCounts={(count) => {
-            // Count can trigger React update if needed, handled inside
-          }}
+          onUpdateCounts={setCorreccionesCount}
         />
       );
     }
