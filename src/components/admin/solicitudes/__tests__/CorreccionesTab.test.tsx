@@ -53,6 +53,8 @@ it("abre sólo pendientes y permite consultar cada historial sin mezclar estados
     expect(screen.getByText(`Persona ${state}`)).toBeInTheDocument();
     expect(screen.queryByText("Persona pendiente")).not.toBeInTheDocument();
   }
+  expect(screen.getByText("Archivada", { exact: true })).toBeInTheDocument();
+  expect(screen.queryByText("Pendiente", { exact: true })).not.toBeInTheDocument();
   await user.click(screen.getByRole("button", { name: /Pendientes/ }));
   expect(screen.getByText("Persona pendiente")).toBeInTheDocument();
 });

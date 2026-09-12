@@ -340,6 +340,7 @@ const CorreccionCardItem: React.FC<CorreccionCardItemProps> = ({
     const e = (est || "").toLowerCase();
     if (e === "aprobada") return { label: "Aprobada", c: "var(--ok)", s: "var(--ok-soft)" };
     if (e === "rechazada") return { label: "Rechazada", c: "var(--crit)", s: "var(--crit-soft)" };
+    if (e === "archivada") return { label: "Archivada", c: "var(--ink-3)", s: "var(--paper-2)" };
     return { label: "Pendiente", c: "var(--warn)", s: "var(--warn-soft)" };
   };
 
